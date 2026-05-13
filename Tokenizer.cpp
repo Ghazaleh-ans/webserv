@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/12 15:58:01 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/12 15:58:03 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/13 13:47:40 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,9 +18,6 @@
 Tokenizer::Tokenizer() : _pos(0), _line(1) {}
 Tokenizer::~Tokenizer() {}
 
-// Skip whitespace AND shell-style comments (# to end of line).
-// We track line numbers here because '\n' is the only char where the
-// line counter advances.
 void	Tokenizer::skip_whitespace_and_comments(const std::string& input)
 {
 	while (_pos < input.size())
@@ -37,8 +34,6 @@ void	Tokenizer::skip_whitespace_and_comments(const std::string& input)
 		}
 		else if (c == '#')
 		{
-			// Skip until newline (but don't consume the newline itself;
-			// the outer loop will handle it and increment _line).
 			while (_pos < input.size() && input[_pos] != '\n')
 				++_pos;
 		}
@@ -49,9 +44,6 @@ void	Tokenizer::skip_whitespace_and_comments(const std::string& input)
 	}
 }
 
-// A "word" is a run of characters that aren't whitespace or special tokens.
-// This is permissive on purpose: "127.0.0.1", "8080", "/var/www", ".php"
-// are all single words. Validation of the *content* happens in the parser.
 Token	Tokenizer::read_word(const std::string& input)
 {
 	Token tok;
@@ -112,8 +104,6 @@ std::vector<Token>	Tokenizer::tokenize(const std::string& input)
 		}
 	}
 
-	// Always append END so the parser can do `tokens[i].type == END`
-	// without bounds-checking everywhere.
 	Token end_tok;
 	end_tok.type = Token::END;
 	end_tok.line = _line;

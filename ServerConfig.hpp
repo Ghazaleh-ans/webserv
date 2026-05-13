@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/12 13:33:31 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/13 12:42:56 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/13 15:51:43 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,7 +29,7 @@ public:
 
 	std::vector<std::string>	server_names;
 	long						client_max_body_size;
-	std::map<int, std::string>	error_pages;
+	std::map<int, std::string>	error_pages; //code: path
 	std::vector<LocationConfig>	locations;
 };
 

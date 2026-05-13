@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/12 16:08:40 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/13 14:53:05 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/13 16:50:07 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -62,7 +62,7 @@ std::vector<ServerConfig>	ConfigParser::parse_string(const std::string& input)
 		if (peek().type != Token::WORD || peek().value != "server")
 			error("expected 'server' block at top level, got '"
 				+ tok_display(peek()) + "'", peek().line);
-		consume(); // eat "server"
+		consume();
 		servers.push_back(parse_server());
 	}
 
@@ -150,8 +150,6 @@ void	ConfigParser::parse_server_directive(ServerConfig& srv)
 	else
 		error("unknown directive '" + name + "' in server block", peek().line);
 }
-
-// ===== Grammar: location block =====
 
 LocationConfig	ConfigParser::parse_location()
 {
@@ -251,7 +249,6 @@ void	ConfigParser::parse_host(ServerConfig& srv)
 	expect_semi("host");
 }
 
-// server_name accepts one or more names: `server_name a.com b.com c.com;`
 void	ConfigParser::parse_server_name(ServerConfig& srv)
 {
 	if (!match(Token::WORD))
@@ -261,9 +258,6 @@ void	ConfigParser::parse_server_name(ServerConfig& srv)
 	expect_semi("server_name");
 }
 
-// Accepts plain bytes ("1048576") or suffixed ("1m", "1M", "10k", "10K").
-// Note: does NOT consume the trailing ';' — caller does, so this helper
-// is reusable for both server-level and location-level directives.
 void	ConfigParser::parse_body_size(long& target)
 {
 	const std::string val = expect_word("size after 'client_max_body_size'");
@@ -277,14 +271,10 @@ void	ConfigParser::parse_body_size(long& target)
 	target = bytes;
 }
 
-// error_page 404 /errors/404.html;
-// error_page 500 502 503 /errors/5xx.html;   <-- multiple codes, one page
 void	ConfigParser::parse_error_page(ServerConfig& srv)
 {
 	std::vector<int> codes;
 
-	// We need at least one code AND one path. Grammar: WORD+ WORD ';'
-	// We collect all WORDs, then split: last one is the path, rest are codes.
 	std::vector<std::string> words;
 	while (match(Token::WORD))
 		words.push_back(consume().value);
@@ -313,8 +303,6 @@ void	ConfigParser::parse_methods(LocationConfig& loc)
 	if (!match(Token::WORD))
 		error("expected at least one method after 'methods'", peek().line);
 
-	// Only allow methods we actually implement. Catching typos like
-	// `methods GTE POST;` here is much friendlier than 405s at runtime.
 	std::set<std::string> allowed;
 	allowed.insert("GET");
 	allowed.insert("POST");
@@ -406,13 +394,12 @@ bool	ConfigParser::parse_int(const std::string& s, int& out) const
 	return true;
 }
 
-// Parse "1024", "1k", "1K", "10m", "10M". No spaces between number and suffix.
+// Parse "1024", "1k", "1K", "10m", "10M"
 bool	ConfigParser::parse_size(const std::string& s, long& out) const
 {
 	if (s.empty())
 		return false;
 
-	// Find where the digits end.
 	size_t i = 0;
 	while (i < s.size() && std::isdigit(static_cast<unsigned char>(s[i])))
 		++i;
@@ -439,15 +426,13 @@ bool	ConfigParser::parse_size(const std::string& s, long& out) const
 	else
 		return false;
 
-	// Cheap overflow check: if v > LONG_MAX / multiplier, multiplying overflows.
-	if (multiplier > 1 && v > (2147483647L / multiplier))
+	// overflow check: if v > LONG_MAX / multiplier, multiplying overflows.
+	if (multiplier > 1 && v > (LONG_MAX / multiplier))
 		return false;
 
 	out = v * multiplier;
 	return true;
 }
-
-// ===== Semantic validation =====
 
 void	ConfigParser::validate(const std::vector<ServerConfig>& servers)
 {

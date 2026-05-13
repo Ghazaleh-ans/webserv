@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/12 16:08:40 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/12 16:08:42 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/13 14:53:05 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include <cctype>
 #include <set>
+#include <climits>
 
 ConfigParser::ConfigParser() : _tokens(), _pos(0) {}
 ConfigParser::~ConfigParser() {}
@@ -35,18 +36,15 @@ static std::string	tok_display(const Token& t)
 	return "";
 }
 
-// ===== Public entry points =====
-
 std::vector<ServerConfig>	ConfigParser::parse_file(const std::string& path)
 {
 	std::ifstream file(path.c_str());
+
 	if (!file.is_open())
 		throw std::runtime_error("cannot open config file: " + path);
 
-	// Read the whole file into a string. For config files this is fine —
-	// they're tiny. We wouldn't do this for arbitrary user uploads.
 	std::stringstream buf;
-	buf << file.rdbuf();
+	buf << file.rdbuf(); //instead of getline - rdnuf() -> read all the data in a single call
 	return parse_string(buf.str());
 }
 
@@ -64,7 +62,7 @@ std::vector<ServerConfig>	ConfigParser::parse_string(const std::string& input)
 		if (peek().type != Token::WORD || peek().value != "server")
 			error("expected 'server' block at top level, got '"
 				+ tok_display(peek()) + "'", peek().line);
-		consume();  // eat "server"
+		consume(); // eat "server"
 		servers.push_back(parse_server());
 	}
 
@@ -75,8 +73,6 @@ std::vector<ServerConfig>	ConfigParser::parse_string(const std::string& input)
 	return servers;
 }
 
-// ===== Token cursor =====
-
 const Token&	ConfigParser::peek() const
 {
 	return _tokens[_pos];
@@ -85,8 +81,6 @@ const Token&	ConfigParser::peek() const
 const Token&	ConfigParser::consume()
 {
 	const Token& t = _tokens[_pos];
-	// Don't advance past END — keeps peek() safe even if a buggy
-	// grammar rule tries to consume too much.
 	if (t.type != Token::END)
 		++_pos;
 	return t;
@@ -118,8 +112,6 @@ void	ConfigParser::expect_semi(const std::string& directive)
 	consume();
 }
 
-// ===== Grammar: server block =====
-
 ServerConfig	ConfigParser::parse_server()
 {
 	ServerConfig srv;
@@ -140,10 +132,6 @@ void	ConfigParser::parse_server_directive(ServerConfig& srv)
 
 	const std::string name = consume().value;
 
-	// Dispatch on directive name. This is a chain of if/else rather than
-	// a map<string, function-ptr> because (a) C++98 doesn't have lambdas,
-	// (b) member function pointers are syntactically ugly, and (c) the
-	// list is short enough that the linear scan is irrelevant.
 	if (name == "listen")
 		parse_listen(srv);
 	else if (name == "host")
@@ -223,8 +211,6 @@ void	ConfigParser::parse_location_directive(LocationConfig& loc)
 			peek().line);
 }
 
-// ===== Per-directive value parsers =====
-
 // listen 8080;     -> port = 8080
 // listen 0.0.0.0:8080;  -> host = 0.0.0.0, port = 8080
 void	ConfigParser::parse_listen(ServerConfig& srv)
@@ -252,7 +238,7 @@ void	ConfigParser::parse_listen(ServerConfig& srv)
 	int port;
 	if (!parse_int(port_part, port))
 		error("invalid port number '" + port_part + "'", line);
-	if (port < 1 || port > 65535)
+	if (port < 1 || port > 65535) // port number is a 16-bit unsigned integer -> 2^16 - 1 = 65535 [the maximum] {0 is excluded because in case of 0 the Os will choose a random port}
 		error("port out of range (1-65535): " + port_part, line);
 	srv.port = port;
 
@@ -393,8 +379,6 @@ void	ConfigParser::parse_cgi(LocationConfig& loc)
 	expect_semi("cgi_extension");
 }
 
-// ===== Utilities =====
-
 void	ConfigParser::error(const std::string& msg, int line) const
 {
 	std::stringstream ss;
@@ -402,8 +386,6 @@ void	ConfigParser::error(const std::string& msg, int line) const
 	throw std::runtime_error(ss.str());
 }
 
-// Strict integer parser. Rejects empty, leading +/-, trailing garbage,
-// and values that don't fit in int.
 bool	ConfigParser::parse_int(const std::string& s, int& out) const
 {
 	if (s.empty())
@@ -414,14 +396,11 @@ bool	ConfigParser::parse_int(const std::string& s, int& out) const
 			return false;
 	}
 
-	// std::strtol does the overflow check for us. We use it with errno
-	// in normal code, but here we double-check by parsing the result.
 	char* endptr;
 	long v = std::strtol(s.c_str(), &endptr, 10);
 	if (*endptr != '\0')
 		return false;
-	// int range check — on most platforms int is 32-bit, but be safe.
-	if (v < -2147483647L - 1 || v > 2147483647L)
+	if (v < (long)INT_MIN|| v > (long)INT_MAX)
 		return false;
 	out = static_cast<int>(v);
 	return true;

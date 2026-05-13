@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/12 15:59:32 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/13 11:20:02 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/13 13:02:08 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,8 +27,6 @@ public:
 	~ConfigParser();
 
 	std::vector<ServerConfig>	parse_file(const std::string& path);
-
-	// Same but takes the config text directly — useful for testing.
 	std::vector<ServerConfig>	parse_string(const std::string& input);
 
 private:

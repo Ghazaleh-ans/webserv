@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/12 15:59:32 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/12 15:59:33 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/13 13:02:08 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,20 +26,10 @@ public:
 	ConfigParser();
 	~ConfigParser();
 
-	// Read file from disk and parse it. Returns all server blocks found.
-	// Throws std::runtime_error with a descriptive message on any error
-	// (file not found, syntax error, validation failure).
 	std::vector<ServerConfig>	parse_file(const std::string& path);
-
-	// Same but takes the config text directly — useful for testing.
 	std::vector<ServerConfig>	parse_string(const std::string& input);
 
 private:
-	// We hold the token vector and a current-position index as state.
-	// This is cleaner than passing them as parameters to every helper,
-	// but it does mean ConfigParser is single-use (re-parsing on the same
-	// instance would work because parse_string() resets state, but it's
-	// not designed for concurrent use).
 	std::vector<Token>	_tokens;
 	size_t				_pos;
 

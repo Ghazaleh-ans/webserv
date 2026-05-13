@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/12 13:07:42 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/12 13:18:12 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/13 16:45:13 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,33 +23,15 @@ public:
 	LocationConfig();
 	~LocationConfig();
 
-	// The URI prefix this block matches, e.g. "/", "/upload", "/cgi-bin"
 	std::string					path;
-
-	// Filesystem root. URL "/foo/bar.html" with root "/var/www"
-	// resolves to "/var/www/foo/bar.html".
 	std::string					root;
-
-	// Default file when the request targets a directory (e.g. "index.html")
 	std::string					index;
-
-	// Allowed HTTP methods on this route. Empty == "inherit default" (GET only).
 	std::vector<std::string>	methods;
-
-	// If non-empty, every request to this location is redirected.
-	// First = status code (301/302/...), second = target URL.
 	bool						has_redirect;
 	int							redirect_code;
 	std::string					redirect_url;
-
-	// Directory listing when no index file is found
 	bool						autoindex;
-
-	// Per-location override of the server-wide client_max_body_size.
-	// -1 means "not set, inherit from server".
 	long						client_max_body_size;
-
-	// Where uploads land. Empty == uploads disabled on this route.
 	std::string					upload_store;
 
 	// CGI configuration: extension (".py") -> interpreter ("/usr/bin/python3")

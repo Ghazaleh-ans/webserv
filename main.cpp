@@ -1,62 +1,14 @@
 #include <iostream>
-#include <iomanip>
+#include <csignal>
 #include "ConfigParser.hpp"
+#include "Server.hpp"
 
-// Pretty-printer for the parsed config. This is the proof that parsing
-// worked: if we can re-emit a human-readable form of what we parsed,
-// we trust the result.
-static void	print_location(const LocationConfig& loc, int indent)
+// Signal handler for SIGINT/SIGTERM. Only allowed to do async-signal-safe
+// work, which here is just setting a flag. The poll loop checks the flag
+// each iteration.
+static void	handle_signal(int /*sig*/)
 {
-	std::string pad(indent, ' ');
-	std::cout << pad << "location " << loc.path << " {\n";
-	if (!loc.root.empty())
-		std::cout << pad << "  root: " << loc.root << "\n";
-	if (!loc.index.empty())
-		std::cout << pad << "  index: " << loc.index << "\n";
-	if (!loc.methods.empty())
-	{
-		std::cout << pad << "  methods:";
-		for (size_t i = 0; i < loc.methods.size(); ++i)
-			std::cout << " " << loc.methods[i];
-		std::cout << "\n";
-	}
-	if (loc.has_redirect)
-		std::cout << pad << "  return: " << loc.redirect_code
-			<< " " << loc.redirect_url << "\n";
-	std::cout << pad << "  autoindex: "
-		<< (loc.autoindex ? "on" : "off") << "\n";
-	if (loc.client_max_body_size >= 0)
-		std::cout << pad << "  client_max_body_size: "
-			<< loc.client_max_body_size << "\n";
-	if (!loc.upload_store.empty())
-		std::cout << pad << "  upload_store: " << loc.upload_store << "\n";
-	for (std::map<std::string, std::string>::const_iterator it
-			= loc.cgi_handlers.begin(); it != loc.cgi_handlers.end(); ++it)
-		std::cout << pad << "  cgi: " << it->first
-			<< " -> " << it->second << "\n";
-	std::cout << pad << "}\n";
-}
-
-static void	print_server(const ServerConfig& srv)
-{
-	std::cout << "server {\n";
-	std::cout << "  listen: " << srv.host << ":" << srv.port << "\n";
-	if (!srv.server_names.empty())
-	{
-		std::cout << "  server_name:";
-		for (size_t i = 0; i < srv.server_names.size(); ++i)
-			std::cout << " " << srv.server_names[i];
-		std::cout << "\n";
-	}
-	std::cout << "  client_max_body_size: "
-		<< srv.client_max_body_size << "\n";
-	for (std::map<int, std::string>::const_iterator it
-			= srv.error_pages.begin(); it != srv.error_pages.end(); ++it)
-		std::cout << "  error_page: " << it->first
-			<< " -> " << it->second << "\n";
-	for (size_t i = 0; i < srv.locations.size(); ++i)
-		print_location(srv.locations[i], 2);
-	std::cout << "}\n";
+	Server::request_stop();
 }
 
 int	main(int argc, char** argv)
@@ -67,15 +19,25 @@ int	main(int argc, char** argv)
 		return 1;
 	}
 
+	// Ignore SIGPIPE: when a client closes its end and we try to send,
+	// the kernel would deliver SIGPIPE and kill the process. The
+	// subject demands "must not crash under any circumstances," so
+	// we ignore it — send() will return -1 instead, which the Client
+	// code handles by closing the connection.
+	std::signal(SIGPIPE, SIG_IGN);
+
+	// SIGINT (Ctrl-C) and SIGTERM cleanly stop the loop.
+	std::signal(SIGINT, handle_signal);
+	std::signal(SIGTERM, handle_signal);
+
 	try
 	{
 		ConfigParser parser;
-		std::vector<ServerConfig> servers = parser.parse_file(argv[1]);
+		std::vector<ServerConfig> configs = parser.parse_file(argv[1]);
 
-		std::cout << "=== Parsed " << servers.size()
-			<< " server block(s) ===\n\n";
-		for (size_t i = 0; i < servers.size(); ++i)
-			print_server(servers[i]);
+		Server server(configs);
+		server.start();
+		server.run();
 
 		return 0;
 	}

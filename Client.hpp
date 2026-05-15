@@ -1,0 +1,65 @@
+#ifndef CLIENT_HPP
+# define CLIENT_HPP
+
+# include <string>
+# include <ctime>
+# include "ServerConfig.hpp"
+
+// One Client per active TCP connection. Holds:
+//   - the fd
+//   - an inbound buffer (bytes recv'd, not yet processed)
+//   - an outbound buffer (bytes to send when poll says POLLOUT)
+//   - a timestamp for idle-timeout detection
+//   - a back-pointer to the ServerConfig that should handle requests on it
+//
+// This is a *passive* object: the Server's poll loop drives it. The
+// Client itself never calls poll(), never blocks, never makes
+// independent decisions about when to read or write.
+class Client
+{
+public:
+	Client(int fd, const ServerConfig& config);
+	~Client();
+
+	int						fd() const;
+	const ServerConfig&		config() const;
+
+	// State queries the Server uses to decide which poll events to ask for.
+	bool					has_data_to_send() const;
+	bool					should_close() const;
+
+	// Bookkeeping for idle-timeout detection.
+	std::time_t				last_active() const;
+	void					touch();  // refresh last_active to "now"
+
+	// Called by Server when poll says this fd is readable.
+	// Returns false if the connection should be closed (peer hung up,
+	// fatal read error). DOES NOT call errno after recv() — the return
+	// value (0 == EOF, >0 == bytes, -1 == "would block, try later")
+	// is sufficient.
+	bool					on_readable();
+
+	// Called by Server when poll says this fd is writable.
+	// Drains _out_buffer as far as the kernel will accept.
+	// Returns false on fatal error.
+	bool					on_writable();
+
+	// Skeleton: build a minimal HTTP 200 response. Real Module 3 will
+	// replace this with a proper request parser + router. For now,
+	// any complete-looking request gets the same canned reply.
+	void					try_build_response();
+
+private:
+	int						_fd;
+	const ServerConfig*		_config;
+	std::string				_in_buffer;
+	std::string				_out_buffer;
+	std::time_t				_last_active;
+	bool					_should_close;
+	bool					_response_built;
+
+	Client(const Client&);
+	Client&	operator=(const Client&);
+};
+
+#endif

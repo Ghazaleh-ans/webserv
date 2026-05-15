@@ -26,7 +26,11 @@ SRCS		= main.cpp \
 			  Tokenizer.cpp \
 			  ConfigParser.cpp \
 			  ServerConfig.cpp \
-			  LocationConfig.cpp
+			  LocationConfig.cpp \
+			  Server.cpp \
+			  SocketUtils.cpp \
+			  Client.cpp \
+			  Listener.cpp
 
 # Objects
 OBJ_DIR		= obj
@@ -36,7 +40,11 @@ OBJS		= $(addprefix $(OBJ_DIR)/, $(SRCS:.cpp=.o))
 HEADERS	= Tokenizer.hpp \
 			  ConfigParser.hpp \
 			  ServerConfig.hpp \
-			  LocationConfig.hpp
+			  LocationConfig.hpp \
+			  Server.hpp \
+			  SocketUtils.hpp \
+			  Client.hpp \
+			  Listener.hpp
 
 all: $(NAME)
 

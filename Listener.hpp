@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:45 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/15 16:28:46 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/19 14:19:18 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,8 +21,6 @@
 class Listener
 {
 public:
-	// Constructor opens the listening socket immediately. Throws on
-	// failure (bind error, etc.). The Server will catch and abort startup.
 	Listener(const ServerConfig& config);
 	~Listener();
 

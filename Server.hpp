@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:32 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/15 16:29:33 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/19 13:05:28 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,7 +20,6 @@
 # include "Listener.hpp"
 # include "Client.hpp"
 
-// The single poll-loop owner. One Server per webserv process.
 class Server
 {
 public:

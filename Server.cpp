@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:29 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/15 16:29:30 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/19 13:07:04 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,7 +24,7 @@ volatile bool	Server::_stop_requested = false;
 Server::Server(const std::vector<ServerConfig>& configs)
 	: _listeners(),
 	  _clients(),
-	  _configs(configs),  // own a copy so caller's vector can go out of scope
+	  _configs(configs),
 	  _pfds()
 {
 }

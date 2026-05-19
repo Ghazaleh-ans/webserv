@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:16 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/15 16:28:20 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/19 13:26:38 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,9 +16,6 @@
 # include <string>
 # include <stdexcept>
 
-// Free functions wrapping the noisy parts of socket(2)/bind(2)/listen(2)
-// and the macOS fcntl() dance. Kept as plain functions (not a class)
-// because they have no state — they're just shortcuts.
 namespace SocketUtils
 {
 	// Create a listening TCP socket on host:port, set non-blocking,

@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/15 16:28:57 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/20 13:53:49 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,19 +18,26 @@
 #include <sstream>
 #include <ctime>
 
-// Read this many bytes per recv() call. Bigger = fewer syscalls per
-// request but more memory per client; 8 KiB is the traditional sweet spot.
+// One recv() reads up to this many bytes per poll event. 8 KiB is the
+// traditional sweet spot: large enough that small requests arrive in
+// one syscall, small enough that we don't hog the loop on a single client.
 static const size_t	RECV_CHUNK = 8192;
 
 Client::Client(int fd, const ServerConfig& config)
 	: _fd(fd),
 	  _config(&config),
-	  _in_buffer(),
+	  _parser(),
 	  _out_buffer(),
 	  _last_active(std::time(NULL)),
 	  _should_close(false),
 	  _response_built(false)
 {
+	// Tell the parser about this server's body-size limit so it can
+	// short-circuit oversized uploads at header-parse time (413
+	// Payload Too Large) instead of waiting for the bytes to arrive.
+	if (_config->client_max_body_size > 0)
+		_parser.set_max_body_size(
+			static_cast<size_t>(_config->client_max_body_size));
 }
 
 Client::~Client()
@@ -49,93 +56,91 @@ bool	Client::on_readable()
 {
 	char buf[RECV_CHUNK];
 
-	// One recv() per poll event. Don't loop here — if there's more
-	// data, poll() will tell us next iteration. Looping in a single
-	// poll-event handler is a classic way to starve other clients.
+	// One recv() per poll event. See Module 2 walkthrough for the
+	// "don't loop here" reasoning — it would starve other clients
+	// and tempt us to check errno.
 	ssize_t n = recv(_fd, buf, sizeof(buf), 0);
-
-	// recv() return semantics — IMPORTANT, this is where the subject
-	// rule "no errno after read/write" forces us to be careful:
-	//   n > 0  : got n bytes
-	//   n == 0 : peer closed cleanly (FIN received)
-	//   n < 0  : either WOULDBLOCK (poll lied / spurious wakeup) or a
-	//            real error. We can't distinguish without errno, so
-	//            we treat all <0 as "give up on this connection".
-	//            This matches the subject's rules exactly.
 	if (n == 0)
-		return false;  // peer disconnected
+		return false;  // clean disconnect from peer
 	if (n < 0)
-		return false;  // assume fatal, drop the client
+		return false;  // any error treated as fatal (no errno check)
 
-	_in_buffer.append(buf, static_cast<size_t>(n));
 	touch();
 
-	// Skeleton: as soon as we see the end of an HTTP request (the
-	// blank line "\r\n\r\n"), build a canned response. Real parsing
-	// arrives in Module 3.
-	if (!_response_built && _in_buffer.find("\r\n\r\n") != std::string::npos)
-		try_build_response();
-
-	// Cap inbound buffer at the configured limit, even before parsing.
-	// Otherwise a malicious client could feed us gigabytes before
-	// Module 3 lands.
-	if (_in_buffer.size() > static_cast<size_t>(_config->client_max_body_size)
-		+ 8192)  // +8K to allow generous headers
+	// Feed everything we read into the parser. The parser handles
+	// partial input transparently — bytes that don't complete a line
+	// stay in its internal buffer.
+	if (_response_built)
 	{
-		return false;
+		// Pipelined request? We don't support keep-alive yet, so any
+		// data arriving after we've built a response is unexpected.
+		// Drop quietly.
+		return true;
 	}
 
+	HttpRequestParser::State st = _parser.feed(buf, static_cast<size_t>(n));
+
+	if (st == HttpRequestParser::STATE_ERROR)
+	{
+		build_error_response(_parser.status_code());
+		return true;
+	}
+	if (st == HttpRequestParser::STATE_DONE)
+	{
+		build_response();
+		return true;
+	}
+	// Otherwise: still parsing, wait for more bytes.
 	return true;
 }
 
 bool	Client::on_writable()
 {
 	if (_out_buffer.empty())
-		return true;  // nothing to do; poll shouldn't have called us, but fine
+		return true;
 
-	// Same "one syscall per poll event" rule as on_readable.
 	ssize_t n = send(_fd, _out_buffer.data(), _out_buffer.size(), 0);
 	if (n <= 0)
-		return false;  // treat both errors and 0 as fatal (no errno check)
+		return false;
 
-	// Slide the buffer: drop the bytes we successfully sent.
-	// std::string::erase is O(n) — for a project server it's fine;
-	// optimizing this would use an offset+data() trick.
 	_out_buffer.erase(0, static_cast<size_t>(n));
 	touch();
 
-	// If we drained the whole response (skeleton: HTTP/1.0 "Connection:
-	// close" semantics), close after sending.
 	if (_out_buffer.empty() && _response_built)
 		_should_close = true;
 
 	return true;
 }
 
-void	Client::try_build_response()
+void	Client::build_response()
 {
 	_response_built = true;
 
-	// Hardcoded HTTP/1.1 200 response. Note CRLF, not bare LF — HTTP
-	// requires \r\n line endings. Many browsers tolerate \n, but our
-	// goal is correctness, not just luck.
-	//
-	// We dump a few fields from _config so peers (and you, during
-	// defense) can SEE that the parser's data actually reached this
-	// Client. Real Module 3 will replace this with proper routing.
+	// Module 3 still uses a diagnostic response that echoes what the
+	// parser saw. This is the test bench — once we can SEE the
+	// parser working from a browser, we trust it and replace this
+	// with the real router (Module 4).
+	const HttpRequest& req = _parser.request();
+
 	std::stringstream body;
 	body << "<!DOCTYPE html>\r\n"
 		<< "<html><head><title>webserv</title></head>\r\n"
-		<< "<body><h1>webserv is alive</h1>\r\n"
-		<< "<p>Module 2 skeleton: poll() loop accepting connections.</p>\r\n"
-		<< "<h2>Config seen by this Client:</h2>\r\n"
+		<< "<body><h1>Request received</h1>\r\n"
+		<< "<h2>Parsed request:</h2>\r\n"
 		<< "<ul>\r\n"
-		<< "  <li>host: " << _config->host << "</li>\r\n"
-		<< "  <li>port: " << _config->port << "</li>\r\n"
+		<< "  <li><b>method:</b> " << req.method << "</li>\r\n"
+		<< "  <li><b>path:</b> " << req.path << "</li>\r\n"
+		<< "  <li><b>query:</b> " << req.query << "</li>\r\n"
+		<< "  <li><b>version:</b> " << req.version << "</li>\r\n"
+		<< "  <li><b>headers:</b> " << req.headers.size() << "</li>\r\n"
+		<< "  <li><b>body size:</b> " << req.body.size() << " bytes</li>\r\n"
+		<< "</ul>\r\n"
+		<< "<h2>Server config seen:</h2>\r\n"
+		<< "<ul>\r\n"
+		<< "  <li>host:port: " << _config->host
+		<< ":" << _config->port << "</li>\r\n"
 		<< "  <li>client_max_body_size: "
 		<< _config->client_max_body_size << "</li>\r\n"
-		<< "  <li>locations configured: "
-		<< _config->locations.size() << "</li>\r\n"
 		<< "</ul>\r\n"
 		<< "</body></html>\r\n";
 
@@ -143,6 +148,46 @@ void	Client::try_build_response()
 
 	std::stringstream resp;
 	resp << "HTTP/1.1 200 OK\r\n"
+		<< "Content-Type: text/html\r\n"
+		<< "Content-Length: " << body_str.size() << "\r\n"
+		<< "Connection: close\r\n"
+		<< "\r\n"
+		<< body_str;
+
+	_out_buffer = resp.str();
+}
+
+// Status-line text for the few error codes we emit at this stage.
+// Real Module 5 will produce richer error pages.
+static std::string	reason_for(int code)
+{
+	switch (code)
+	{
+		case 400: return "Bad Request";
+		case 413: return "Payload Too Large";
+		case 414: return "URI Too Long";
+		case 431: return "Request Header Fields Too Large";
+		case 500: return "Internal Server Error";
+		case 501: return "Not Implemented";
+		case 505: return "HTTP Version Not Supported";
+		default:  return "Error";
+	}
+}
+
+void	Client::build_error_response(int code)
+{
+	_response_built = true;
+
+	const std::string reason = reason_for(code);
+
+	std::stringstream body;
+	body << "<!DOCTYPE html>\r\n"
+		<< "<html><head><title>" << code << " " << reason << "</title></head>\r\n"
+		<< "<body><h1>" << code << " " << reason << "</h1></body></html>\r\n";
+	const std::string body_str = body.str();
+
+	std::stringstream resp;
+	resp << "HTTP/1.1 " << code << " " << reason << "\r\n"
 		<< "Content-Type: text/html\r\n"
 		<< "Content-Length: " << body_str.size() << "\r\n"
 		<< "Connection: close\r\n"

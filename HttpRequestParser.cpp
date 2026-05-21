@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/20 13:32:08 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/21 12:25:58 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/21 13:51:24 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -180,14 +180,12 @@ bool	HttpRequestParser::parse_headers()
 	std::string line;
 	while (extract_line(line))
 	{
-		// Cap header line length.
 		if (line.size() > MAX_HEADER_LINE)
 		{
 			fail(431);  // Request Header Fields Too Large
 			return true;
 		}
 
-		// Cap total header bytes.
 		_headers_size_so_far += line.size() + 2;  // +2 for the CRLF we ate
 		if (_headers_size_so_far > _max_header_size)
 		{
@@ -261,14 +259,12 @@ void	HttpRequestParser::decide_post_header_state()
 	std::string te = _req.header("transfer-encoding");
 	if (!te.empty())
 	{
-		// We only support "chunked" as the sole encoding. Anything else
-		// (gzip, deflate, etc.) → 501.
 		if (te != "chunked")
 		{
 			fail(501);
 			return;
 		}
-		// RFC 7230: if both TE: chunked and Content-Length are present,
+		// if both TE: chunked and Content-Length are present,
 		// the message is suspect; some specs say "use chunked," others
 		// "reject." We reject as the safer choice.
 		if (_req.has_header("content-length"))
@@ -283,8 +279,6 @@ void	HttpRequestParser::decide_post_header_state()
 	std::string cl = _req.header("content-length");
 	if (!cl.empty())
 	{
-		// Parse the length. Must be all digits, non-negative, within
-		// our configured body cap.
 		for (size_t i = 0; i < cl.size(); ++i)
 		{
 			if (!std::isdigit(static_cast<unsigned char>(cl[i])))
@@ -293,7 +287,6 @@ void	HttpRequestParser::decide_post_header_state()
 				return;
 			}
 		}
-		// strtol gives us overflow handling.
 		char* endptr = NULL;
 		long n = std::strtol(cl.c_str(), &endptr, 10);
 		if (endptr == cl.c_str() || *endptr != '\0' || n < 0)
@@ -309,7 +302,7 @@ void	HttpRequestParser::decide_post_header_state()
 		_body_remaining = n;
 		if (_body_remaining == 0)
 		{
-			_state = STATE_DONE;
+			_state = STATE_DONE; //There is nothing to consume
 			return;
 		}
 		_state = STATE_BODY_LENGTH;
@@ -328,7 +321,7 @@ bool	HttpRequestParser::parse_body_length()
 
 	size_t take = _buf.size();
 	if (static_cast<long>(take) > _body_remaining)
-		take = static_cast<size_t>(_body_remaining);
+		take = static_cast<size_t>(_body_remaining); // to consume only the amount of bytes content-lenght mentioned
 
 	// Belt-and-suspenders: this should already be enforced by the
 	// Content-Length check at header time, but if the cap was raised
@@ -358,9 +351,6 @@ bool	HttpRequestParser::parse_body_length()
 //   0 CRLF
 //   [optional trailer headers]
 //   CRLF
-//
-// We ignore chunk extensions and trailer headers — both are legal but
-// rarely used and not required by the subject.
 bool	HttpRequestParser::parse_chunk_size()
 {
 	std::string line;
@@ -373,6 +363,14 @@ bool	HttpRequestParser::parse_chunk_size()
 		}
 		return false;
 	}
+
+	//	POST /upload HTTP/1.1\r\n
+	//	Transfer-Encoding: chunked\r\n
+	//	\r\n
+	//	a; filename=test.txt\r\n     ← chunk size line with extension
+	//	0123456789\r\n               ← 10 bytes of data
+	//	0\r\n                        ← final chunk
+	//	\r\n
 
 	// Strip chunk extensions (everything after ';').
 	size_t semi = line.find(';');
@@ -406,7 +404,7 @@ bool	HttpRequestParser::parse_chunk_size()
 	}
 
 	_chunk_remaining = size;
-	if (size == 0)
+	if (size == 0) //no more chunks
 	{
 		_state = STATE_CHUNK_TRAILER;
 		return true;
@@ -437,8 +435,6 @@ bool	HttpRequestParser::parse_chunk_data()
 	}
 
 	// Chunk-data is followed by CRLF before the next size line.
-	// We need at least 2 bytes; if we have them, eat them; if they
-	// aren't \r\n that's a malformed chunk.
 	if (_buf.size() < 2)
 		return false;
 	if (_buf[0] != '\r' || _buf[1] != '\n')
@@ -463,7 +459,6 @@ bool	HttpRequestParser::parse_chunk_trailer()
 			_state = STATE_DONE;
 			return true;
 		}
-		// Ignore trailer line contents.
 	}
 	return false;  // need more data
 }

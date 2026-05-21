@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/20 12:55:47 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/21 12:29:08 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/21 12:35:49 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,8 +36,7 @@ public:
 	std::string	query;        // everything after ?, e.g. "bar=baz" (or empty)
 	std::string	version;      // "HTTP/1.1"
 
-	// Headers stored with case-insensitive lookup. Keys are lowercased
-	// at insert time for predictability.
+	// Headers stored with case-insensitive lookup.
 	std::map<std::string, std::string, CaseInsensitiveLess>	headers;
 
 	// Body bytes. For chunked transfers this holds the un-chunked payload.

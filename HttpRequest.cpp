@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/20 13:05:16 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/20 13:05:24 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/21 12:29:59 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,8 +20,6 @@ bool	CaseInsensitiveLess::operator()(const std::string& a,
 	std::string::const_iterator bi = b.begin();
 	while (ai != a.end() && bi != b.end())
 	{
-		// std::tolower needs unsigned char; see the same trick in the
-		// Tokenizer for the same reason (signed char + negative byte = UB).
 		unsigned char ca = static_cast<unsigned char>(*ai);
 		unsigned char cb = static_cast<unsigned char>(*bi);
 		ca = static_cast<unsigned char>(std::tolower(ca));

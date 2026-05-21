@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/20 12:55:47 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/20 13:01:00 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/21 12:29:08 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,10 +17,6 @@
 # include <map>
 
 // Case-insensitive comparator for header names.
-// HTTP header names are case-insensitive ("Content-Length" == "content-length"),
-// so we lowercase as we go and store with a custom comparator just in case.
-// In practice we always lowercase before insert/lookup; the comparator is
-// belt-and-suspenders for any caller that forgets.
 struct CaseInsensitiveLess
 {
 	bool	operator()(const std::string& a, const std::string& b) const;

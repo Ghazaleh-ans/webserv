@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:29 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/19 17:40:26 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/21 11:18:02 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -101,7 +101,7 @@ void	Server::build_pollfds()
 		pfd.fd = it->first;
 		pfd.events = POLLIN;
 		if (it->second->has_data_to_send())
-			pfd.events |= POLLOUT;
+			pfd.events |= POLLOUT; //bitwise or assignment
 		pfd.revents = 0;
 		_pfds.push_back(pfd);
 	}

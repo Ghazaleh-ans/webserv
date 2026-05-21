@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/20 13:32:08 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/20 13:32:09 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/21 12:25:58 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -87,7 +87,7 @@ bool	HttpRequestParser::extract_line(std::string& out)
 	return true;
 }
 
-// Split _req.uri at the first '?' into path and query.
+// [path ? query]
 void	HttpRequestParser::split_uri()
 {
 	size_t q = _req.uri.find('?');
@@ -125,12 +125,13 @@ bool	HttpRequestParser::parse_request_line()
 		return false;
 	}
 
-	// Empty line before the request? Some clients (NGINX itself) tolerate
-	// a leading CRLF as a "robustness" gesture. We silently skip one.
+	// Empty line before the request:
+	// a leading CRLF as a "robustness" gesture. We silently skip one.[Carriage Retrun(\r) + Line Feed(\n)]
 	if (line.empty())
 		return true;  // re-enter state with what remains in _buf
 
-	// Parse three space-separated tokens.
+	// Request Line:
+	// method URI[Unifrom Resourse Identifier(path + query)]
 	size_t sp1 = line.find(' ');
 	if (sp1 == std::string::npos) { fail(400); return true; }
 	size_t sp2 = line.find(' ', sp1 + 1);
@@ -153,10 +154,6 @@ bool	HttpRequestParser::parse_request_line()
 		return true;
 	}
 
-	// Validation: URI non-empty, must start with '/'.
-	// (Absolute-form URIs like "http://host/path" exist in HTTP/1.1
-	// but are only required for proxies. We're an origin server, so
-	// origin-form is what we accept.)
 	if (_req.uri.empty() || _req.uri[0] != '/')
 	{
 		fail(400);
@@ -205,8 +202,7 @@ bool	HttpRequestParser::parse_headers()
 			return true;
 		}
 
-		// Split at first ':'. Everything before is the name, everything
-		// after (trimmed of leading whitespace) is the value.
+		// name: value [no space before the :]
 		size_t colon = line.find(':');
 		if (colon == std::string::npos)
 		{
@@ -217,7 +213,6 @@ bool	HttpRequestParser::parse_headers()
 		std::string name = line.substr(0, colon);
 		std::string value = line.substr(colon + 1);
 
-		// RFC 7230 §3.2.4: name must not have whitespace before the ':'.
 		// "Foo : bar" is malformed.
 		if (!name.empty() && std::isspace(
 				static_cast<unsigned char>(name[name.size() - 1])))
@@ -242,7 +237,7 @@ bool	HttpRequestParser::parse_headers()
 			--v_end;
 		value = value.substr(v_start, v_end - v_start);
 
-		// Lowercase the name (in place) for normalised storage.
+		// case insensetive
 		for (size_t i = 0; i < name.size(); ++i)
 			name[i] = static_cast<char>(std::tolower(
 				static_cast<unsigned char>(name[i])));
@@ -261,9 +256,6 @@ bool	HttpRequestParser::parse_headers()
 //   1. Transfer-Encoding: chunked  → chunked state machine
 //   2. Content-Length: N           → read N bytes
 //   3. Neither                     → no body, request is complete
-//
-// (RFC 7230 §3.3.3 is more nuanced — both is an error, etc — but for
-// the project the above covers the cases we'll encounter.)
 void	HttpRequestParser::decide_post_header_state()
 {
 	std::string te = _req.header("transfer-encoding");
@@ -487,9 +479,6 @@ HttpRequestParser::State	HttpRequestParser::feed(const char* data, size_t len)
 
 	_buf.append(data, len);
 
-	// Drive the state machine until it stalls (no progress) or finishes.
-	// Each handler returns true if it made progress; we loop while that
-	// keeps happening. Bounded by _buf shrinking on every successful pass.
 	bool progressed = true;
 	while (progressed && _state != STATE_DONE && _state != STATE_ERROR)
 	{

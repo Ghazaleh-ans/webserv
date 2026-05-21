@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/21 15:09:16 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/21 18:50:59 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,6 +27,7 @@ Client::Client(int fd, const ServerConfig& config)
 	: _fd(fd),
 	  _config(&config),
 	  _parser(),
+	  _router(),
 	  _out_buffer(),
 	  _last_active(std::time(NULL)),
 	  _should_close(false),
@@ -116,37 +117,71 @@ void	Client::build_response()
 {
 	_response_built = true;
 
-	// Module 3 still uses a diagnostic response that echoes what the
-	// parser saw. This is the test bench — once we can SEE the
-	// parser working from a browser, we trust it and replace this
-	// with the real router (Module 4).
 	const HttpRequest& req = _parser.request();
+	RouteDecision d = _router.route(req, *_config);
+
+	if (d.kind == RouteDecision::KIND_REDIRECT)
+	{
+		std::stringstream body;
+		body << "<html><body><h1>" << d.redirect_code
+			<< " Redirect</h1><p>See <a href=\""
+			<< d.redirect_url << "\">"
+			<< d.redirect_url << "</a></p></body></html>\r\n";
+		const std::string body_str = body.str();
+
+		std::stringstream resp;
+		resp << "HTTP/1.1 " << d.redirect_code << " ";
+		if (d.redirect_code == 301)      resp << "Moved Permanently";
+		else if (d.redirect_code == 302) resp << "Found";
+		else if (d.redirect_code == 303) resp << "See Other";
+		else if (d.redirect_code == 307) resp << "Temporary Redirect";
+		else if (d.redirect_code == 308) resp << "Permanent Redirect";
+		else                              resp << "Redirect";
+		resp << "\r\n"
+			<< "Location: " << d.redirect_url << "\r\n"
+			<< "Content-Type: text/html\r\n"
+			<< "Content-Length: " << body_str.size() << "\r\n"
+			<< "Connection: close\r\n"
+			<< "\r\n"
+			<< body_str;
+		_out_buffer = resp.str();
+		return;
+	}
+
+	if (d.kind == RouteDecision::KIND_ERROR)
+	{
+		build_error_response(d.error_code);
+		return;
+	}
 
 	std::stringstream body;
 	body << "<!DOCTYPE html>\r\n"
-		<< "<html><head><title>webserv</title></head>\r\n"
-		<< "<body><h1>Request received</h1>\r\n"
-		<< "<h2>Parsed request:</h2>\r\n"
-		<< "<ul>\r\n"
+		<< "<html><head><title>webserv routed</title></head>\r\n"
+		<< "<body><h1>Routing decision</h1>\r\n"
+		<< "<h2>Request</h2><ul>\r\n"
 		<< "  <li><b>method:</b> " << req.method << "</li>\r\n"
-		<< "  <li><b>path:</b> " << req.path << "</li>\r\n"
-		<< "  <li><b>query:</b> " << req.query << "</li>\r\n"
-		<< "  <li><b>version:</b> " << req.version << "</li>\r\n"
-		<< "  <li><b>headers:</b> " << req.headers.size() << "</li>\r\n"
-		<< "  <li><b>body size:</b> " << req.body.size() << " bytes</li>\r\n"
-		<< "  <li><b>body:</b> " << req.body << "</li>\r\n"
+		<< "  <li><b>uri path:</b> " << req.path << "</li>\r\n"
 		<< "</ul>\r\n"
-		<< "<h2>Server config seen:</h2>\r\n"
-		<< "<ul>\r\n"
-		<< "  <li>host:port: " << _config->host
-		<< ":" << _config->port << "</li>\r\n"
-		<< "  <li>client_max_body_size: "
-		<< _config->client_max_body_size << "</li>\r\n"
+		<< "<h2>Matched location</h2><ul>\r\n"
+		<< "  <li><b>location path:</b> "
+		<< (d.location ? d.location->path : "(none)") << "</li>\r\n"
+		<< "  <li><b>root:</b> "
+		<< (d.location ? d.location->root : "(none)") << "</li>\r\n"
+		<< "</ul>\r\n"
+		<< "<h2>Resolved</h2><ul>\r\n"
+		<< "  <li><b>fs_path:</b> " << d.fs_path << "</li>\r\n"
+		<< "  <li><b>directory request:</b> "
+		<< (d.is_directory_request ? "yes" : "no") << "</li>\r\n"
+		<< "  <li><b>index file:</b> "
+		<< (d.index_file.empty() ? "(none)" : d.index_file) << "</li>\r\n"
+		<< "  <li><b>autoindex:</b> "
+		<< (d.autoindex ? "on" : "off") << "</li>\r\n"
+		<< "  <li><b>effective body limit:</b> "
+		<< d.effective_body_limit << "</li>\r\n"
 		<< "</ul>\r\n"
 		<< "</body></html>\r\n";
 
 	const std::string body_str = body.str();
-
 	std::stringstream resp;
 	resp << "HTTP/1.1 200 OK\r\n"
 		<< "Content-Type: text/html\r\n"
@@ -154,12 +189,9 @@ void	Client::build_response()
 		<< "Connection: close\r\n"
 		<< "\r\n"
 		<< body_str;
-
 	_out_buffer = resp.str();
 }
 
-// Status-line text for the few error codes we emit at this stage.
-// Real Module 5 will produce richer error pages.
 static std::string	reason_for(int code)
 {
 	switch (code)

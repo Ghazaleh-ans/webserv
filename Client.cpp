@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/20 13:53:49 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/21 15:09:16 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -134,6 +134,7 @@ void	Client::build_response()
 		<< "  <li><b>version:</b> " << req.version << "</li>\r\n"
 		<< "  <li><b>headers:</b> " << req.headers.size() << "</li>\r\n"
 		<< "  <li><b>body size:</b> " << req.body.size() << " bytes</li>\r\n"
+		<< "  <li><b>body:</b> " << req.body << "</li>\r\n"
 		<< "</ul>\r\n"
 		<< "<h2>Server config seen:</h2>\r\n"
 		<< "<ul>\r\n"

@@ -30,7 +30,9 @@ SRCS		= main.cpp \
 			  Server.cpp \
 			  SocketUtils.cpp \
 			  Client.cpp \
-			  Listener.cpp
+			  Listener.cpp \
+			  HttpRequest.cpp \
+			  HttpRequestParser.cpp
 
 # Objects
 OBJ_DIR		= obj
@@ -44,7 +46,9 @@ HEADERS	= Tokenizer.hpp \
 			  Server.hpp \
 			  SocketUtils.hpp \
 			  Client.hpp \
-			  Listener.hpp
+			  Listener.hpp \
+			  HttpRequest.hpp \
+			  HttpRequestParser.hpp \
 
 all: $(NAME)
 

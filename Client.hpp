@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:02 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/15 16:29:03 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/20 11:02:15 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 # include <string>
 # include <ctime>
 # include "ServerConfig.hpp"
+# include "HttpRequestParser.hpp"
 
 // One Client per active TCP connection. Holds:
 //   - the fd
@@ -56,15 +57,18 @@ public:
 	// Returns false on fatal error.
 	bool					on_writable();
 
-	// Skeleton: build a minimal HTTP 200 response. Real Module 3 will
-	// replace this with a proper request parser + router. For now,
-	// any complete-looking request gets the same canned reply.
-	void					try_build_response();
+	// Build a response from the parsed request. Module 3 still uses a
+	// minimal canned response; Modules 4 and 5 will replace this with
+	// real routing and static-file serving.
+	void					build_response();
+
+	// Build an error response when the parser fails with a status code.
+	void					build_error_response(int status_code);
 
 private:
 	int						_fd;
 	const ServerConfig*		_config;
-	std::string				_in_buffer;
+	HttpRequestParser		_parser;
 	std::string				_out_buffer;
 	std::time_t				_last_active;
 	bool					_should_close;

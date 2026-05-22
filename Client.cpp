@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/22 13:12:56 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/22 14:21:23 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,27 +54,19 @@ bool	Client::on_readable()
 {
 	char buf[RECV_CHUNK];
 
-	// One recv() per poll event. See Module 2 walkthrough for the
-	// "don't loop here" reasoning — it would starve other clients
-	// and tempt us to check errno.
+	// don't loop here -> it would starve other clients + errno check
 	ssize_t n = recv(_fd, buf, sizeof(buf), 0);
 	if (n == 0)
-		return false;  // clean disconnect from peer
+		return false; // clean disconnect from peer
 	if (n < 0)
-		return false;  // any error treated as fatal (no errno check)
+		return false; // any error
 
 	touch();
 
-	// Feed everything we read into the parser. The parser handles
-	// partial input transparently — bytes that don't complete a line
-	// stay in its internal buffer.
+	// Feed everything we read into the parser
+	// bytes that don't complete a line stay in its internal buffer
 	if (_response_built)
-	{
-		// Pipelined request? We don't support keep-alive yet, so any
-		// data arriving after we've built a response is unexpected.
-		// Drop quietly.
 		return true;
-	}
 
 	HttpRequestParser::State st = _parser.feed(buf, static_cast<size_t>(n));
 

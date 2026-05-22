@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:49 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/22 10:36:45 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/22 12:56:31 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,9 +43,6 @@ const ServerConfig&	Listener::config() const
 
 int	Listener::accept_one()
 {
-	// We don't need the peer's address for the basic flow, but accept()
-	// requires non-null pointers on some old kernels. Passing NULL works
-	// on Linux but is non-portable, so we use a real struct.
 	struct sockaddr_in peer;
 	socklen_t peer_len = sizeof(peer);
 

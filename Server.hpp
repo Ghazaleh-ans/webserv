@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:32 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/22 10:21:57 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/22 12:53:23 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,9 +37,9 @@ public:
 	static void	request_stop();
 
 private:
-	// Owned listeners. We use pointers because Listener is non-copyable
+	// pointers are used because Listener is non-copyable
 	// (it owns an fd) and std::vector<Listener> would require copies
-	// in C++98 (no move semantics). Pointer vector sidesteps that.
+	// Pointer vector sidesteps that
 	std::vector<Listener*>		_listeners;
 
 	// Owned clients keyed by fd, so when poll reports activity on fd N
@@ -61,9 +61,7 @@ private:
 	// hang indefinitely" — we enforce it by reaping silent clients.
 	static const int			CLIENT_TIMEOUT_SECONDS = 30;
 
-	// poll timeout in milliseconds. Doesn't need to be short — we
-	// only need to wake up periodically for the idle-timeout sweep
-	// and the stop check.
+	// poll timeout in milliseconds
 	static const int			POLL_TIMEOUT_MS = 1000;
 
 	// --- Loop helpers ---

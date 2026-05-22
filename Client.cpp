@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/21 18:50:59 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/22 13:12:56 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,9 +33,6 @@ Client::Client(int fd, const ServerConfig& config)
 	  _should_close(false),
 	  _response_built(false)
 {
-	// Tell the parser about this server's body-size limit so it can
-	// short-circuit oversized uploads at header-parse time (413
-	// Payload Too Large) instead of waiting for the bytes to arrive.
 	if (_config->client_max_body_size > 0)
 		_parser.set_max_body_size(
 			static_cast<size_t>(_config->client_max_body_size));

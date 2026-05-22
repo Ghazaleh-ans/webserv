@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:32 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/19 13:05:28 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/22 10:21:57 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,11 +26,10 @@ public:
 	Server(const std::vector<ServerConfig>& configs);
 	~Server();
 
-	// Open every listening socket. Throws if any bind fails (so the
-	// user sees the error and we don't half-start).
+	// Open every listening socket
 	void	start();
 
-	// Run the poll loop until stop() is called. Blocks.
+	// Run the poll loop until stop() is called
 	void	run();
 
 	// Causes run() to return cleanly. Safe to call from a signal

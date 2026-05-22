@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:29 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/21 11:18:02 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/22 10:22:26 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,8 +48,7 @@ void	Server::request_stop()
 
 void	Server::start()
 {
-	// One Listener per server block. The validator already rejected
-	// duplicate host:port pairs, so each bind is unique.
+	// One Listener per server block
 	for (size_t i = 0; i < _configs.size(); ++i)
 	{
 		Listener* lis = new Listener(_configs[i]);  // may throw on bind error

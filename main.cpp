@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/19 13:03:46 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/19 13:03:48 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/22 10:18:57 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,9 +15,6 @@
 #include "ConfigParser.hpp"
 #include "Server.hpp"
 
-// Signal handler for SIGINT/SIGTERM. Only allowed to do async-signal-safe
-// work, which here is just setting a flag. The poll loop checks the flag
-// each iteration.
 static void	handle_signal(int /*sig*/)
 {
 	Server::request_stop();
@@ -31,11 +28,8 @@ int	main(int argc, char** argv)
 		return 1;
 	}
 
-	// Ignore SIGPIPE: when a client closes its end and we try to send,
-	// the kernel would deliver SIGPIPE and kill the process. The
-	// subject demands "must not crash under any circumstances," so
-	// we ignore it — send() will return -1 instead, which the Client
-	// code handles by closing the connection.
+	// SIGPIPE: a synchronous signal that's sent to a process 
+	// which attempts to write data to a socket or pipe that has been closed by the reading end
 	std::signal(SIGPIPE, SIG_IGN);
 
 	// SIGINT (Ctrl-C) and SIGTERM cleanly stop the loop.

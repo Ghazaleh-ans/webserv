@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:32 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/19 13:05:28 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/01 14:12:02 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,11 +26,10 @@ public:
 	Server(const std::vector<ServerConfig>& configs);
 	~Server();
 
-	// Open every listening socket. Throws if any bind fails (so the
-	// user sees the error and we don't half-start).
+	// Open every listening socket
 	void	start();
 
-	// Run the poll loop until stop() is called. Blocks.
+	// Run the poll loop until stop() is called
 	void	run();
 
 	// Causes run() to return cleanly. Safe to call from a signal
@@ -38,13 +37,12 @@ public:
 	static void	request_stop();
 
 private:
-	// Owned listeners. We use pointers because Listener is non-copyable
+	// pointers are used because Listener is non-copyable
 	// (it owns an fd) and std::vector<Listener> would require copies
-	// in C++98 (no move semantics). Pointer vector sidesteps that.
+	// Pointer vector sidesteps that
 	std::vector<Listener*>		_listeners;
 
 	// Owned clients keyed by fd, so when poll reports activity on fd N
-	// we can O(log n) find the right Client.
 	std::map<int, Client*>		_clients;
 
 	// The original configs, kept alive for the lifetime of the server
@@ -62,9 +60,7 @@ private:
 	// hang indefinitely" — we enforce it by reaping silent clients.
 	static const int			CLIENT_TIMEOUT_SECONDS = 30;
 
-	// poll timeout in milliseconds. Doesn't need to be short — we
-	// only need to wake up periodically for the idle-timeout sweep
-	// and the stop check.
+	// poll timeout in milliseconds
 	static const int			POLL_TIMEOUT_MS = 1000;
 
 	// --- Loop helpers ---

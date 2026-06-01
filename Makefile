@@ -32,7 +32,9 @@ SRCS		= main.cpp \
 			  Client.cpp \
 			  Listener.cpp \
 			  HttpRequest.cpp \
-			  HttpRequestParser.cpp
+			  HttpRequestParser.cpp \
+			  RouteDecision.cpp \
+			  Router.cpp
 
 # Objects
 OBJ_DIR		= obj
@@ -49,6 +51,8 @@ HEADERS	= Tokenizer.hpp \
 			  Listener.hpp \
 			  HttpRequest.hpp \
 			  HttpRequestParser.hpp \
+			  RouteDecision.cpp \
+			  Router.cpp
 
 all: $(NAME)
 

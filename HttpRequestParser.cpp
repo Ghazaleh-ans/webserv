@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/20 13:32:08 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/21 13:51:24 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/01 16:29:47 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,9 +15,7 @@
 #include <cstdlib>
 #include <sstream>
 
-// Hard ceiling on a single header line. Some servers (NGINX) use 8KB.
-// Anything longer almost certainly means an attack or a bug, never a
-// legitimate browser request.
+// (NGINX) use 8KB -> anything longer almost certainly means an attack or a bug
 static const size_t	MAX_HEADER_LINE = 8192;
 
 // Default header-section cap when the caller doesn't override.
@@ -67,11 +65,6 @@ void	HttpRequestParser::fail(int code)
 	_status_code = code;
 }
 
-// Pop a CRLF-terminated line from _buf into `out` (without the CRLF).
-// Returns true if a complete line was available. We accept bare LF as
-// well, even though strict HTTP requires CRLF — many tools (telnet,
-// hand-typed clients) use just LF. We do NOT modify _req.method etc here;
-// caller is responsible for that.
 bool	HttpRequestParser::extract_line(std::string& out)
 {
 	size_t lf = _buf.find('\n');
@@ -80,7 +73,7 @@ bool	HttpRequestParser::extract_line(std::string& out)
 
 	size_t end = lf;
 	if (end > 0 && _buf[end - 1] == '\r')
-		--end;  // strip the CR
+		--end;
 
 	out.assign(_buf, 0, end);
 	_buf.erase(0, lf + 1);
@@ -108,30 +101,25 @@ void	HttpRequestParser::split_uri()
 // ===========================================================
 
 // Parse "METHOD SP URI SP HTTP/VERSION CRLF"
-// RFC 7230 §3.1.1: exactly two spaces separating three tokens.
+// Line:
+// method URI[Unifrom Resourse Identifier(path + query)] HTTP/VERSION \r\n
 bool	HttpRequestParser::parse_request_line()
 {
 	std::string line;
 	if (!extract_line(line))
 	{
-		// Cap how long we'll wait for a request line. Slowloris-style
-		// attacks could send one byte every few seconds; the line cap
-		// plus the Client's idle-timeout together prevent abuse.
 		if (_buf.size() > MAX_HEADER_LINE)
 		{
-			fail(414);  // 414 URI Too Long is the closest standard code
+			fail(414); // 414 URI Too Long is the closest standard code
 			return true;
 		}
 		return false;
 	}
 
-	// Empty line before the request:
-	// a leading CRLF as a "robustness" gesture. We silently skip one.[Carriage Retrun(\r) + Line Feed(\n)]
+	// Empty line before the request: [\r\n]
 	if (line.empty())
-		return true;  // re-enter state with what remains in _buf
+		return true; // re-enter state with what remains in _buf
 
-	// Request Line:
-	// method URI[Unifrom Resourse Identifier(path + query)]
 	size_t sp1 = line.find(' ');
 	if (sp1 == std::string::npos) { fail(400); return true; }
 	size_t sp2 = line.find(' ', sp1 + 1);
@@ -141,12 +129,6 @@ bool	HttpRequestParser::parse_request_line()
 	_req.uri     = line.substr(sp1 + 1, sp2 - sp1 - 1);
 	_req.version = line.substr(sp2 + 1);
 
-	// Validation: method must be one of the three we support.
-	// (Returning 405 here is debatable — 501 Not Implemented is the
-	// strict choice for unknown methods, while 405 means "known but
-	// not allowed on this resource." We'll use 501 for unknown verbs;
-	// the router can later return 405 when a known verb hits a
-	// location that disallows it.)
 	if (_req.method != "GET" && _req.method != "POST"
 		&& _req.method != "DELETE")
 	{
@@ -160,11 +142,9 @@ bool	HttpRequestParser::parse_request_line()
 		return true;
 	}
 
-	// Validation: version must be HTTP/1.0 or HTTP/1.1. We accept both;
-	// the subject suggests HTTP/1.0 as reference but doesn't forbid 1.1.
 	if (_req.version != "HTTP/1.0" && _req.version != "HTTP/1.1")
 	{
-		fail(505);  // HTTP Version Not Supported
+		fail(505);
 		return true;
 	}
 
@@ -173,8 +153,8 @@ bool	HttpRequestParser::parse_request_line()
 	return true;
 }
 
-// Parse header lines until blank line. Each line: "Name: value CRLF".
-// We lowercase the name for case-insensitive lookup.
+// Parse header lines until blank line, each line: "Name: value CRLF"
+// lowercase the name -> case-insensitive
 bool	HttpRequestParser::parse_headers()
 {
 	std::string line;
@@ -182,11 +162,11 @@ bool	HttpRequestParser::parse_headers()
 	{
 		if (line.size() > MAX_HEADER_LINE)
 		{
-			fail(431);  // Request Header Fields Too Large
+			fail(431); // Request Header Fields Too Large
 			return true;
 		}
 
-		_headers_size_so_far += line.size() + 2;  // +2 for the CRLF we ate
+		_headers_size_so_far += line.size() + 2; // +2 for the CRLF we ate
 		if (_headers_size_so_far > _max_header_size)
 		{
 			fail(431);
@@ -211,7 +191,6 @@ bool	HttpRequestParser::parse_headers()
 		std::string name = line.substr(0, colon);
 		std::string value = line.substr(colon + 1);
 
-		// "Foo : bar" is malformed.
 		if (!name.empty() && std::isspace(
 				static_cast<unsigned char>(name[name.size() - 1])))
 		{
@@ -240,16 +219,12 @@ bool	HttpRequestParser::parse_headers()
 			name[i] = static_cast<char>(std::tolower(
 				static_cast<unsigned char>(name[i])));
 
-		// If the same header appears twice, RFC says we may combine
-		// with a comma. For now, last value wins — simpler, and the
-		// only header we currently care about duplicating is Set-Cookie
-		// (response side, not our problem here).
 		_req.headers[name] = value;
 	}
-	return false;  // need more data
+	return false; // need more data
 }
 
-// Once headers are done, decide whether there's a body and how to read it.
+// Once headers are done, decide whether there's a body and how to read it
 // Three cases:
 //   1. Transfer-Encoding: chunked  → chunked state machine
 //   2. Content-Length: N           → read N bytes
@@ -264,9 +239,7 @@ void	HttpRequestParser::decide_post_header_state()
 			fail(501);
 			return;
 		}
-		// if both TE: chunked and Content-Length are present,
-		// the message is suspect; some specs say "use chunked," others
-		// "reject." We reject as the safer choice.
+		// if both TE: chunked and Content-Length are present -> reject
 		if (_req.has_header("content-length"))
 		{
 			fail(400);
@@ -296,7 +269,7 @@ void	HttpRequestParser::decide_post_header_state()
 		}
 		if (static_cast<size_t>(n) > _max_body_size)
 		{
-			fail(413);  // Payload Too Large
+			fail(413); // Payload Too Large
 			return;
 		}
 		_body_remaining = n;
@@ -309,11 +282,11 @@ void	HttpRequestParser::decide_post_header_state()
 		return;
 	}
 
-	// No body indicators → request is done.
+	// No body indicators -> request is done
 	_state = STATE_DONE;
 }
 
-// Pull up to _body_remaining bytes from _buf into _req.body.
+// Pull up to _body_remaining bytes from _buf into _req.body
 bool	HttpRequestParser::parse_body_length()
 {
 	if (_buf.empty())
@@ -323,9 +296,6 @@ bool	HttpRequestParser::parse_body_length()
 	if (static_cast<long>(take) > _body_remaining)
 		take = static_cast<size_t>(_body_remaining); // to consume only the amount of bytes content-lenght mentioned
 
-	// Belt-and-suspenders: this should already be enforced by the
-	// Content-Length check at header time, but if the cap was raised
-	// mid-stream this stops a runaway append.
 	if (_req.body.size() + take > _max_body_size)
 	{
 		fail(413);
@@ -344,13 +314,13 @@ bool	HttpRequestParser::parse_body_length()
 	return false;  // still need more data
 }
 
-// Chunked encoding format:
-//   <hex-size>[;ext] CRLF
-//   <data of that many bytes> CRLF
-//   ...
-//   0 CRLF
-//   [optional trailer headers]
-//   CRLF
+	//	POST /upload HTTP/1.1\r\n
+	//	Transfer-Encoding: chunked\r\n
+	//	\r\n
+	//	a; filename=test.txt\r\n     ← chunk size line with extension
+	//	0123456789\r\n               ← 10 bytes of data
+	//	0\r\n                        ← final chunk
+	//	\r\n
 bool	HttpRequestParser::parse_chunk_size()
 {
 	std::string line;
@@ -364,20 +334,12 @@ bool	HttpRequestParser::parse_chunk_size()
 		return false;
 	}
 
-	//	POST /upload HTTP/1.1\r\n
-	//	Transfer-Encoding: chunked\r\n
-	//	\r\n
-	//	a; filename=test.txt\r\n     ← chunk size line with extension
-	//	0123456789\r\n               ← 10 bytes of data
-	//	0\r\n                        ← final chunk
-	//	\r\n
-
-	// Strip chunk extensions (everything after ';').
+	// Strip chunk extensions (everything after ';')
 	size_t semi = line.find(';');
 	if (semi != std::string::npos)
 		line = line.substr(0, semi);
 
-	// Trim trailing whitespace.
+	// Trim trailing whitespace
 	while (!line.empty() && std::isspace(
 			static_cast<unsigned char>(line[line.size() - 1])))
 		line.resize(line.size() - 1);
@@ -388,7 +350,7 @@ bool	HttpRequestParser::parse_chunk_size()
 		return true;
 	}
 
-	// Parse hex.
+	// Parse hex
 	char* endptr = NULL;
 	long size = std::strtol(line.c_str(), &endptr, 16);
 	if (endptr == line.c_str() || *endptr != '\0' || size < 0)
@@ -413,7 +375,7 @@ bool	HttpRequestParser::parse_chunk_size()
 	return true;
 }
 
-// Read _chunk_remaining bytes of data, then expect a CRLF.
+// Read _chunk_remaining bytes of data, then expect a CRLF
 bool	HttpRequestParser::parse_chunk_data()
 {
 	// First, drain remaining chunk bytes.

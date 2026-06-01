@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:49 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/19 14:28:03 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/01 14:28:43 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,9 +20,10 @@
 Listener::Listener(const ServerConfig& config)
 	: _fd(-1), _config(&config)
 {
-	// SOMAXCONN-ish backlog. 128 is the historical kernel cap; modern
-	// Linux silently allows more but 128 is plenty for a project server.
-	_fd = SocketUtils::make_listener(config.host, config.port, 128);
+	// SOMAXCONN -> SOcket MAXimum CONNections -> backlog -> pending connections in queue
+	// waiting to be accept
+	// For backlog: modern Linux silently allows more but 128 is plenty for a project server
+	_fd = SocketUtils::make_listener(config.host, config.port, SOMAXCONN);
 }
 
 Listener::~Listener()
@@ -42,9 +43,6 @@ const ServerConfig&	Listener::config() const
 
 int	Listener::accept_one()
 {
-	// We don't need the peer's address for the basic flow, but accept()
-	// requires non-null pointers on some old kernels. Passing NULL works
-	// on Linux but is non-portable, so we use a real struct.
 	struct sockaddr_in peer;
 	socklen_t peer_len = sizeof(peer);
 
@@ -54,17 +52,11 @@ int	Listener::accept_one()
 
 	if (client_fd == -1)
 	{
-		// Subject rule: never check errno after read/write. accept()
-		// is technically a "read-like" operation on the listening
-		// socket. To stay strictly compliant we just return -1 and
-		// let the caller move on. poll() will tell us again if there's
-		// still something waiting.
+		// Subject rule: no errno
 		return -1;
 	}
 
-	// New client socket must also be non-blocking. accept() does NOT
-	// inherit the parent's O_NONBLOCK on Linux pre-2.6.27 / macOS, so
-	// we set it explicitly every time.
+	//make the new client nonblocking
 	try
 	{
 		SocketUtils::set_nonblocking_cloexec(client_fd);

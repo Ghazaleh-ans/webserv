@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/20 12:55:47 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/21 12:35:49 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/01 16:06:49 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,7 +42,7 @@ public:
 	// Body bytes. For chunked transfers this holds the un-chunked payload.
 	std::string	body;
 
-	// Header convenience accessors. Return empty string if not present.
+	// Return empty string if the header is not present
 	std::string	header(const std::string& name) const;
 	bool		has_header(const std::string& name) const;
 };

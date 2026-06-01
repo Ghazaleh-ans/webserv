@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:29 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/22 13:25:33 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/01 14:32:36 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,12 +74,10 @@ bool	Server::is_listener_fd(int fd, Listener** out) const
 
 void	Server::build_pollfds()
 {
-	// Rebuild from scratch each iteration. We could maintain the array
-	// incrementally (add on accept, remove on disconnect), but rebuilding
-	// is simpler, predictable, and the cost is O(n) on a few hundred fds.
+	// Rebuild from scratch each iteration
 	_pfds.clear();
 
-	// Listeners: only care about POLLIN (new connection waiting).
+	// Listeners: only care about POLLIN (new connection waiting)
 	for (size_t i = 0; i < _listeners.size(); ++i)
 	{
 		struct pollfd pfd;
@@ -89,10 +87,9 @@ void	Server::build_pollfds()
 		_pfds.push_back(pfd);
 	}
 
-	// Clients: always want POLLIN (more request data) and only ask
-	// for POLLOUT when we actually have something to send. Asking for
-	// POLLOUT unconditionally would cause poll() to return immediately
-	// every iteration — busy-loop disaster.
+	// Clients: always want POLLIN -> more request data
+	// only ask for POLLOUT -> when we actually have something to send
+	// Asking for POLLOUT unconditionally -> poll() returns immediately every iteration -> busy-loop disaster
 	for (std::map<int, Client*>::iterator it = _clients.begin();
 		it != _clients.end(); ++it)
 	{
@@ -100,7 +97,7 @@ void	Server::build_pollfds()
 		pfd.fd = it->first;
 		pfd.events = POLLIN;
 		if (it->second->has_data_to_send())
-			pfd.events |= POLLOUT; //bitwise or assignment
+			pfd.events |= POLLOUT;
 		pfd.revents = 0;
 		_pfds.push_back(pfd);
 	}
@@ -136,8 +133,7 @@ void	Server::handle_client_event(int fd, short revents)
 		return;
 	}
 
-	// Order matters: handle reads before writes
-	// A read might produce data we then want to write
+	// handle reads before writes
 	if (revents & POLLIN)
 	{
 		if (!c->on_readable())
@@ -164,8 +160,7 @@ void	Server::sweep_timeouts()
 {
 	std::time_t now = std::time(NULL);
 
-	// Two-pass: collect dead fds, then drop. Mutating _clients while
-	// iterating it would invalidate the iterator.
+	// Two-pass: collect dead fds, then drop
 	std::vector<int> dead;
 	for (std::map<int, Client*>::iterator it = _clients.begin();
 		it != _clients.end(); ++it)

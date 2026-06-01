@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:32 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/22 12:53:23 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/01 14:12:02 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,7 +43,6 @@ private:
 	std::vector<Listener*>		_listeners;
 
 	// Owned clients keyed by fd, so when poll reports activity on fd N
-	// we can O(log n) find the right Client.
 	std::map<int, Client*>		_clients;
 
 	// The original configs, kept alive for the lifetime of the server

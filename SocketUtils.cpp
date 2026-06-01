@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:30 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/22 11:42:13 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/01 13:58:01 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -92,7 +92,7 @@ int	make_listener(const std::string& host, int port, int backlog)
 
 	// inet_pton -> Internet Presentation To Network
 	// converts the IP address string to 4-byte binary format
-	// "127.0.0.1" -> 0x7F000001
+	// "127.0.0.1" -> 0x7F 0x00 0x00 0x01
 	if (inet_pton(AF_INET, host.c_str(), &addr.sin_addr) != 1)
 	{
 		safe_close(fd);

@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/20 13:32:08 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/22 16:36:26 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/01 16:29:47 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -154,7 +154,7 @@ bool	HttpRequestParser::parse_request_line()
 }
 
 // Parse header lines until blank line, each line: "Name: value CRLF"
-// We lowercase the name for case-insensitive lookup.
+// lowercase the name -> case-insensitive
 bool	HttpRequestParser::parse_headers()
 {
 	std::string line;
@@ -286,7 +286,7 @@ void	HttpRequestParser::decide_post_header_state()
 	_state = STATE_DONE;
 }
 
-// Pull up to _body_remaining bytes from _buf into _req.body.
+// Pull up to _body_remaining bytes from _buf into _req.body
 bool	HttpRequestParser::parse_body_length()
 {
 	if (_buf.empty())
@@ -334,12 +334,12 @@ bool	HttpRequestParser::parse_chunk_size()
 		return false;
 	}
 
-	// Strip chunk extensions (everything after ';').
+	// Strip chunk extensions (everything after ';')
 	size_t semi = line.find(';');
 	if (semi != std::string::npos)
 		line = line.substr(0, semi);
 
-	// Trim trailing whitespace.
+	// Trim trailing whitespace
 	while (!line.empty() && std::isspace(
 			static_cast<unsigned char>(line[line.size() - 1])))
 		line.resize(line.size() - 1);
@@ -375,7 +375,7 @@ bool	HttpRequestParser::parse_chunk_size()
 	return true;
 }
 
-// Read _chunk_remaining bytes of data, then expect a CRLF.
+// Read _chunk_remaining bytes of data, then expect a CRLF
 bool	HttpRequestParser::parse_chunk_data()
 {
 	// First, drain remaining chunk bytes.

@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:49 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/22 12:56:31 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/01 14:28:43 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,7 @@ Listener::Listener(const ServerConfig& config)
 {
 	// SOMAXCONN -> SOcket MAXimum CONNections -> backlog -> pending connections in queue
 	// waiting to be accept
-	// For backlog: modern Linux silently allows more but 128 is plenty for a project server.
+	// For backlog: modern Linux silently allows more but 128 is plenty for a project server
 	_fd = SocketUtils::make_listener(config.host, config.port, SOMAXCONN);
 }
 
@@ -52,17 +52,11 @@ int	Listener::accept_one()
 
 	if (client_fd == -1)
 	{
-		// Subject rule: never check errno after read/write. accept()
-		// is technically a "read-like" operation on the listening
-		// socket. To stay strictly compliant we just return -1 and
-		// let the caller move on. poll() will tell us again if there's
-		// still something waiting.
+		// Subject rule: no errno
 		return -1;
 	}
 
-	// New client socket must also be non-blocking. accept() does NOT
-	// inherit the parent's O_NONBLOCK on Linux pre-2.6.27 / macOS, so
-	// we set it explicitly every time.
+	//make the new client nonblocking
 	try
 	{
 		SocketUtils::set_nonblocking_cloexec(client_fd);

@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/20 13:32:08 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/22 16:09:50 by gansari          ###   ########.fr       */
+/*   Updated: 2026/05/22 16:36:26 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -314,13 +314,13 @@ bool	HttpRequestParser::parse_body_length()
 	return false;  // still need more data
 }
 
-// Chunked encoding format:
-//   <hex-size>[;ext] CRLF
-//   <data of that many bytes> CRLF
-//   ...
-//   0 CRLF
-//   [optional trailer headers]
-//   CRLF
+	//	POST /upload HTTP/1.1\r\n
+	//	Transfer-Encoding: chunked\r\n
+	//	\r\n
+	//	a; filename=test.txt\r\n     ← chunk size line with extension
+	//	0123456789\r\n               ← 10 bytes of data
+	//	0\r\n                        ← final chunk
+	//	\r\n
 bool	HttpRequestParser::parse_chunk_size()
 {
 	std::string line;
@@ -333,14 +333,6 @@ bool	HttpRequestParser::parse_chunk_size()
 		}
 		return false;
 	}
-
-	//	POST /upload HTTP/1.1\r\n
-	//	Transfer-Encoding: chunked\r\n
-	//	\r\n
-	//	a; filename=test.txt\r\n     ← chunk size line with extension
-	//	0123456789\r\n               ← 10 bytes of data
-	//	0\r\n                        ← final chunk
-	//	\r\n
 
 	// Strip chunk extensions (everything after ';').
 	size_t semi = line.find(';');
@@ -358,7 +350,7 @@ bool	HttpRequestParser::parse_chunk_size()
 		return true;
 	}
 
-	// Parse hex.
+	// Parse hex
 	char* endptr = NULL;
 	long size = std::strtol(line.c_str(), &endptr, 16);
 	if (endptr == line.c_str() || *endptr != '\0' || size < 0)

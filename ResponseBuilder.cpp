@@ -136,7 +136,7 @@ bool	ResponseBuilder::path_within_root(const std::string& fs_path,
 										   const std::string& root) const
 {
 	if (root.empty())
-		return true;  // no root configured → can't enforce; let it through
+		return true;  // no root configured -> can't enforce; let it through
 	std::string norm_path = lexical_normalize(fs_path);
 	std::string norm_root = lexical_normalize(root);
 
@@ -301,9 +301,9 @@ std::string	ResponseBuilder::build_redirect(const RouteDecision& d) const
 // build_serve: the big one — KIND_SERVE
 // ============================================================
 // Steps:
-//   1. Reject DELETE requests by routing them to handle_delete (above).
-//   2. Path traversal check (refuse 403 if escaping root).
-//   3. stat() the resolved path.
+//   1. Reject DELETE requests by routing them to handle_delete (above)
+//   2. Path traversal check (refuse 403 if escaping root)
+//   3. stat() the resolved path
 //      - missing      → 404
 //      - directory:
 //          a. try `<fs_path>/<index_file>` if index is set
@@ -316,7 +316,7 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req,
 									 const RouteDecision& d,
 									 const ServerConfig& server) const
 {
-	// DELETE goes its own path. POST will go to upload in Module 7.
+	// DELETE goes its own path. POST will go to upload
 	if (req.method == "DELETE")
 		return handle_delete(d, server);
 

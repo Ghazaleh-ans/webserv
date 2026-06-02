@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/21 16:12:44 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/01 18:31:22 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/02 15:17:16 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,7 +42,7 @@ const LocationConfig*	Router::match_location(const std::string& uri_path,
 		const LocationConfig& loc = server.locations[i];
 		const std::string& p = loc.path;
 
-		// Reject if location's path isn't a prefix of uri_path
+		// If location's path isn't a prefix of uri_path -> go to the next one
 		if (uri_path.compare(0, p.size(), p) != 0)
 			continue;
 
@@ -52,17 +52,16 @@ const LocationConfig*	Router::match_location(const std::string& uri_path,
 		// matches anything.
 		if (p.size() < uri_path.size())
 		{
-			// "/foo" must be followed by '/' in "/foo/bar" — but "/foobar"
-			// must NOT match "/foo". So check the char right after the prefix.
-			// Exception: if p ends with '/', the boundary is already inside p.
+			// "/foo" must be followed by '/' in "/foo/bar"
+			// but "/foobar" must NOT match "/foo" -> check the char right after the prefix
+			// Exception: if p ends with '/', the boundary is already inside p
 			if (!p.empty() && p[p.size() - 1] != '/'
 				&& uri_path[p.size()] != '/')
 				continue;
 		}
 
-		// Take only if strictly longer than current best, so equal-length
-		// hits (which shouldn't happen since the parser rejects duplicates,
-		// but defensively) keep the first one.
+		// Each time it finds a valid match that is longer than the previous best, it replaces the best
+		// At the end, best points to the longest-matching location
 		if (p.size() > best_len)
 		{
 			best = &loc;
@@ -77,9 +76,7 @@ const LocationConfig*	Router::match_location(const std::string& uri_path,
 // method_allowed: empty list defaults to "GET only"
 // ============================================================
 // The config parser leaves `methods` empty when the user didn't write
-// a `methods` directive. The convention is: missing == "GET only".
-// This is the safest default — GET is harmless; uploads/deletes
-// require explicit opt-in.
+// a `methods` directive. The convention is: missing == "GET only"
 bool	Router::method_allowed(const LocationConfig& loc,
 							   const std::string& method) const
 {
@@ -95,12 +92,8 @@ bool	Router::method_allowed(const LocationConfig& loc,
 }
 
 // ============================================================
-// build_fs_path: subject example translated to code
+// build_fs_path: converts a URL path into an actual file path on hard drive
 // ============================================================
-// Subject (Chapter IV.3):
-//   "if URL /kapouet is rooted to /tmp/www, URL /kapouet/pouic/toto/pouet
-//    will search for /tmp/www/pouic/toto/pouet"
-//
 // So we strip the location's prefix from the URI, then prepend root.
 // Special care:
 //   - Leave the leading '/' in the tail so root + tail is well-formed
@@ -123,8 +116,7 @@ std::string	Router::build_fs_path(const std::string& uri_path,
 
 	// If tail is empty AND uri exactly equals the location path,
 	// the user is requesting the location's root directory itself.
-	// Make sure we produce "/var/www" (no trailing junk) so Module 5
-	// knows to treat it as a directory request.
+	// Make sure we produce "/var/www" (no trailing junk)
 	if (tail.empty())
 		return root;
 
@@ -134,8 +126,7 @@ std::string	Router::build_fs_path(const std::string& uri_path,
 // ============================================================
 // effective_body_limit: location overrides server default
 // ============================================================
-// LocationConfig defaults client_max_body_size to -1 ("not set, inherit").
-// Any non-negative value is an explicit override.
+// LocationConfig defaults client_max_body_size -> -1 ("not set, inherit")
 long	Router::effective_body_limit(const LocationConfig& loc,
 									 const ServerConfig& server) const
 {
@@ -172,7 +163,7 @@ RouteDecision	Router::route(const HttpRequest& req,
 	d.location = loc;
 	d.effective_body_limit = effective_body_limit(*loc, server);
 
-	// Redirect short-circuits everything.
+	// Redirect short-circuits everything
 	if (loc->has_redirect)
 	{
 		d.kind = RouteDecision::KIND_REDIRECT;
@@ -188,9 +179,11 @@ RouteDecision	Router::route(const HttpRequest& req,
 		return d;
 	}
 
-	// At this point we know we want to serve something.
+	// At this point we know we want to serve something
 	d.kind = RouteDecision::KIND_SERVE;
 	d.fs_path = build_fs_path(req.path, *loc);
+	// /images/cat.jpg -> file request
+	// /images/ -> directory request(trailing slash)
 	d.is_directory_request = !req.path.empty()
 		&& req.path[req.path.size() - 1] == '/';
 	d.index_file = loc->index;

@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:02 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/21 15:29:47 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/01 17:36:14 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 # include "ServerConfig.hpp"
 # include "HttpRequestParser.hpp"
 # include "Router.hpp"
+# include "ResponseBuilder.hpp"
 
 // One Client per active TCP connection. Holds:
 //   - the fd
@@ -71,6 +72,7 @@ private:
 	const ServerConfig*		_config;
 	HttpRequestParser		_parser;
 	Router					_router;
+	ResponseBuilder			_response_builder;
 	std::string				_out_buffer;
 	std::time_t				_last_active;
 	bool					_should_close;

@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/21 16:12:44 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/21 18:29:13 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/01 18:31:22 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,7 +42,7 @@ const LocationConfig*	Router::match_location(const std::string& uri_path,
 		const LocationConfig& loc = server.locations[i];
 		const std::string& p = loc.path;
 
-		// Reject if location's path isn't a prefix of uri_path.
+		// Reject if location's path isn't a prefix of uri_path
 		if (uri_path.compare(0, p.size(), p) != 0)
 			continue;
 

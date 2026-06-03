@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/21 16:12:44 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/02 15:17:16 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/03 11:15:45 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -102,7 +102,7 @@ std::string	Router::build_fs_path(const std::string& uri_path,
 								  const LocationConfig& loc) const
 {
 	// Strip the location's prefix. After this, `tail` either starts
-	// with '/' or is empty (when uri exactly equals the location).
+	// with '/' or is empty (when uri exactly equals the location)
 	std::string tail;
 	if (uri_path.size() > loc.path.size())
 		tail = uri_path.substr(loc.path.size());
@@ -115,7 +115,7 @@ std::string	Router::build_fs_path(const std::string& uri_path,
 		root.resize(root.size() - 1);
 
 	// If tail is empty AND uri exactly equals the location path,
-	// the user is requesting the location's root directory itself.
+	// the user is requesting the location's root directory itself
 	// Make sure we produce "/var/www" (no trailing junk)
 	if (tail.empty())
 		return root;

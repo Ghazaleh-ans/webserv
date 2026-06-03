@@ -79,25 +79,25 @@ std::string	ResponseBuilder::make_response(int code,
 //
 // Strategy: after building fs_path, compute its lexical "canonical"
 // form (resolve "." and ".." textually, without touching the filesystem),
-// then check it still starts with root. realpath(3) would also work but
-// it follows symlinks, which is overkill for the project and would
-// reject legitimate symlink-served content.
+// then check it still starts with root
 static std::string	lexical_normalize(const std::string& p)
 {
-	// Tokenise on '/'. Drop "." segments. Pop the previous segment on "..".
-	// Preserve the leading "/" (absolute) or not (relative).
+	// Tokenise on '/'. Drop "." segments. Pop the previous segment on ".."
+	// Preserve the leading "/" (absolute) or not (relative)
 	bool is_abs = (!p.empty() && p[0] == '/');
 
 	std::vector<std::string> parts;
 	size_t i = 0;
 	while (i < p.size())
 	{
-		// Skip slash runs.
+		// Skip slash runs
 		while (i < p.size() && p[i] == '/')
 			++i;
 		size_t start = i;
 		while (i < p.size() && p[i] != '/')
 			++i;
+		// To avoid empty string from being added to parts
+		// Example: /foo/bar/// -> parts = [foo, bar]
 		if (start == i)
 			break;
 		std::string seg = p.substr(start, i - start);
@@ -136,12 +136,12 @@ bool	ResponseBuilder::path_within_root(const std::string& fs_path,
 										   const std::string& root) const
 {
 	if (root.empty())
-		return true;  // no root configured -> can't enforce; let it through
+		return true;  // no root configured -> can't enforce -> let it through
 	std::string norm_path = lexical_normalize(fs_path);
 	std::string norm_root = lexical_normalize(root);
 
 	// Make sure root doesn't have a trailing slash, then check the path
-	// either equals root or starts with root + "/".
+	// either equals root or starts with root + "/"
 	if (!norm_root.empty() && norm_root[norm_root.size() - 1] == '/'
 		&& norm_root.size() > 1)
 		norm_root.resize(norm_root.size() - 1);
@@ -187,7 +187,7 @@ std::string	ResponseBuilder::list_directory(const std::string& fs_path,
 	if (dir == NULL)
 		return "";  // caller treats as 500
 
-	// Ensure uri_path ends with '/' for clean concatenation in <a href>.
+	// Ensure uri_path ends with '/' for clean concatenation in <a href>
 	std::string base = uri_path;
 	if (base.empty() || base[base.size() - 1] != '/')
 		base += '/';
@@ -203,7 +203,7 @@ std::string	ResponseBuilder::list_directory(const std::string& fs_path,
 			continue;
 
 		// Determine if it's a directory by stat'ing — d_type isn't
-		// portable enough (some filesystems return DT_UNKNOWN).
+		// portable enough (some filesystems return DT_UNKNOWN)
 		std::string child_path = fs_path;
 		if (!child_path.empty() && child_path[child_path.size() - 1] != '/')
 			child_path += '/';
@@ -217,8 +217,6 @@ std::string	ResponseBuilder::list_directory(const std::string& fs_path,
 	}
 	closedir(dir);
 
-	// Naive bubble sort — we won't see directories with thousands of
-	// entries in a project test, and std::sort with a lambda is C++11.
 	for (size_t i = 0; i + 1 < dirs.size(); ++i)
 		for (size_t j = 0; j + 1 < dirs.size() - i; ++j)
 			if (dirs[j] > dirs[j + 1])
@@ -324,20 +322,21 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req,
 		d.location ? d.location->root : std::string();
 
 	// Traversal protection: if the resolved path escapes the location's
-	// root, it's an attack or a bug. 403.
+	// root, it's an attack or a bug. 403
 	if (!path_within_root(d.fs_path, root))
 		return build_error(403, server);
 
+	// Check if bthe file exist
 	struct stat st;
 	if (stat(d.fs_path.c_str(), &st) != 0)
 		return build_error(404, server);
 
-	// Directory case.
+	// Directory case
 	if (S_ISDIR(st.st_mode))
 	{
 		// Browser convention: GET /foo (a directory) should redirect to
-		// /foo/ so relative links resolve correctly. NGINX does this.
-		// We do it only when the URI doesn't already end in '/'.
+		// /foo/ so relative links resolve correctly
+		// We do it only when the URI doesn't already end in '/'
 		if (!req.path.empty() && req.path[req.path.size() - 1] != '/')
 		{
 			RouteDecision fake = d;
@@ -347,7 +346,7 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req,
 			return build_redirect(fake);
 		}
 
-		// Try index file.
+		// Try index file
 		if (!d.index_file.empty())
 		{
 			std::string idx_path = d.fs_path;
@@ -366,7 +365,7 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req,
 			}
 		}
 
-		// Autoindex if enabled.
+		// Autoindex if enabled
 		if (d.autoindex)
 		{
 			std::string body = list_directory(d.fs_path, req.path);

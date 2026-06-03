@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/21 15:34:53 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/21 15:34:57 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/01 18:02:58 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,12 +17,6 @@
 # include "HttpRequest.hpp"
 # include "RouteDecision.hpp"
 
-// Stateless decision-maker. Given a parsed request and the server
-// config that should handle it, returns what should happen.
-//
-// No state means every method could be static — but a class lets us
-// expose the helpers privately and gives a clear home for the routing
-// logic. Construction is free.
 class Router
 {
 public:

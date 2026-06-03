@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/22 14:21:23 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/01 17:47:53 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,7 @@ Client::Client(int fd, const ServerConfig& config)
 	  _config(&config),
 	  _parser(),
 	  _router(),
+	  _response_builder(),
 	  _out_buffer(),
 	  _last_active(std::time(NULL)),
 	  _should_close(false),
@@ -108,113 +109,11 @@ void	Client::build_response()
 
 	const HttpRequest& req = _parser.request();
 	RouteDecision d = _router.route(req, *_config);
-
-	if (d.kind == RouteDecision::KIND_REDIRECT)
-	{
-		std::stringstream body;
-		body << "<html><body><h1>" << d.redirect_code
-			<< " Redirect</h1><p>See <a href=\""
-			<< d.redirect_url << "\">"
-			<< d.redirect_url << "</a></p></body></html>\r\n";
-		const std::string body_str = body.str();
-
-		std::stringstream resp;
-		resp << "HTTP/1.1 " << d.redirect_code << " ";
-		if (d.redirect_code == 301)      resp << "Moved Permanently";
-		else if (d.redirect_code == 302) resp << "Found";
-		else if (d.redirect_code == 303) resp << "See Other";
-		else if (d.redirect_code == 307) resp << "Temporary Redirect";
-		else if (d.redirect_code == 308) resp << "Permanent Redirect";
-		else                              resp << "Redirect";
-		resp << "\r\n"
-			<< "Location: " << d.redirect_url << "\r\n"
-			<< "Content-Type: text/html\r\n"
-			<< "Content-Length: " << body_str.size() << "\r\n"
-			<< "Connection: close\r\n"
-			<< "\r\n"
-			<< body_str;
-		_out_buffer = resp.str();
-		return;
-	}
-
-	if (d.kind == RouteDecision::KIND_ERROR)
-	{
-		build_error_response(d.error_code);
-		return;
-	}
-
-	std::stringstream body;
-	body << "<!DOCTYPE html>\r\n"
-		<< "<html><head><title>webserv routed</title></head>\r\n"
-		<< "<body><h1>Routing decision</h1>\r\n"
-		<< "<h2>Request</h2><ul>\r\n"
-		<< "  <li><b>method:</b> " << req.method << "</li>\r\n"
-		<< "  <li><b>uri path:</b> " << req.path << "</li>\r\n"
-		<< "</ul>\r\n"
-		<< "<h2>Matched location</h2><ul>\r\n"
-		<< "  <li><b>location path:</b> "
-		<< (d.location ? d.location->path : "(none)") << "</li>\r\n"
-		<< "  <li><b>root:</b> "
-		<< (d.location ? d.location->root : "(none)") << "</li>\r\n"
-		<< "</ul>\r\n"
-		<< "<h2>Resolved</h2><ul>\r\n"
-		<< "  <li><b>fs_path:</b> " << d.fs_path << "</li>\r\n"
-		<< "  <li><b>directory request:</b> "
-		<< (d.is_directory_request ? "yes" : "no") << "</li>\r\n"
-		<< "  <li><b>index file:</b> "
-		<< (d.index_file.empty() ? "(none)" : d.index_file) << "</li>\r\n"
-		<< "  <li><b>autoindex:</b> "
-		<< (d.autoindex ? "on" : "off") << "</li>\r\n"
-		<< "  <li><b>effective body limit:</b> "
-		<< d.effective_body_limit << "</li>\r\n"
-		<< "</ul>\r\n"
-		<< "</body></html>\r\n";
-
-	const std::string body_str = body.str();
-	std::stringstream resp;
-	resp << "HTTP/1.1 200 OK\r\n"
-		<< "Content-Type: text/html\r\n"
-		<< "Content-Length: " << body_str.size() << "\r\n"
-		<< "Connection: close\r\n"
-		<< "\r\n"
-		<< body_str;
-	_out_buffer = resp.str();
-}
-
-static std::string	reason_for(int code)
-{
-	switch (code)
-	{
-		case 400: return "Bad Request";
-		case 413: return "Payload Too Large";
-		case 414: return "URI Too Long";
-		case 431: return "Request Header Fields Too Large";
-		case 500: return "Internal Server Error";
-		case 501: return "Not Implemented";
-		case 505: return "HTTP Version Not Supported";
-		default:  return "Error";
-	}
+	_out_buffer = _response_builder.build(req, d, *_config);
 }
 
 void	Client::build_error_response(int code)
 {
 	_response_built = true;
-
-	const std::string reason = reason_for(code);
-
-	std::stringstream body;
-	body << "<!DOCTYPE html>\r\n"
-		<< "<html><head><title>" << code << " " << reason << "</title></head>\r\n"
-		<< "<body><h1>" << code << " " << reason << "</h1></body></html>\r\n";
-	const std::string body_str = body.str();
-
-	std::stringstream resp;
-	resp << "HTTP/1.1 " << code << " " << reason << "\r\n"
-		<< "Content-Type: text/html\r\n"
-		<< "Content-Length: " << body_str.size() << "\r\n"
-		<< "Connection: close\r\n"
-		<< "\r\n"
-		<< body_str;
-
-	_out_buffer = resp.str();
+	_out_buffer = _response_builder.build_error(code, *_config);
 }

@@ -16,10 +16,10 @@ ResponseBuilder::ResponseBuilder() {}
 ResponseBuilder::~ResponseBuilder() {}
 
 // ============================================================
-// reason_phrase: status code → human-readable text
+// reason_phrase: status code -> human-readable text
 // ============================================================
 // Just the codes we actually emit. Anything not listed falls back to
-// "Status" so we never break the status-line shape on weird codes.
+// "Status" so we never break the status-line shape on weird codes
 std::string	ResponseBuilder::reason_phrase(int code) const
 {
 	switch (code)
@@ -269,7 +269,7 @@ std::string	ResponseBuilder::handle_delete(const RouteDecision& d,
 	if (std::remove(d.fs_path.c_str()) != 0)
 		return build_error(500, server);
 
-	// 204 means "success, no body" — Content-Length: 0 mandatory.
+	// 204 means "success, no body" — Content-Length: 0 mandatory
 	std::stringstream ss;
 	ss << "HTTP/1.1 204 No Content\r\n"
 		<< "Content-Length: 0\r\n"
@@ -378,11 +378,10 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req,
 		return build_error(403, server);
 	}
 
-	// Regular file case.
+	// Regular file case
 	if (!S_ISREG(st.st_mode))
 	{
-		// Not a directory, not a regular file (socket, fifo, block device).
-		// Refuse — these wouldn't make sense to serve over HTTP.
+		// Not a directory, not a regular file (socket, fifo, block device)
 		return build_error(403, server);
 	}
 

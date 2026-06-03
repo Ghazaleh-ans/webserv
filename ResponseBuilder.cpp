@@ -426,10 +426,10 @@ std::string	ResponseBuilder::build_error(int code,
 		if (read_file(fs_path, body))
 			return make_response(code, MimeTypes::from_path(fs_path),
 				body, "");
-		// Custom page failed to load → fall through to built-in.
+		// Custom page failed to load -> fall through to built-in
 	}
 
-	// Built-in default error page.
+	// Built-in default error page
 	std::stringstream body;
 	body << "<!DOCTYPE html>\r\n"
 		<< "<html><head><title>" << code << " " << reason_phrase(code)

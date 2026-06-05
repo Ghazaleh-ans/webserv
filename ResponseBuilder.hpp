@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/01 17:43:01 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/01 17:47:12 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/03 17:58:37 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 # include "HttpRequest.hpp"
 # include "ServerConfig.hpp"
 # include "RouteDecision.hpp"
+# include "UploadHandler.hpp"
 
 class ResponseBuilder
 {
@@ -59,6 +60,11 @@ private:
 
 	std::string	handle_delete(const RouteDecision& d,
 							  const ServerConfig& server) const;
+	std::string	handle_upload(const HttpRequest& req,
+							  const RouteDecision& d,
+							  const ServerConfig& server) const;
+
+	UploadHandler	_upload_handler;
 };
 
 #endif

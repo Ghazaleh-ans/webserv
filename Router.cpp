@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/21 16:12:44 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/03 11:15:45 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/05 16:47:33 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,7 +20,7 @@ Router::~Router() {}
 // ============================================================
 // For URI "/cgi-bin/script.py" against locations ["/", "/cgi-bin"]:
 //   "/"        matches with length 1
-//   "/cgi-bin" matches with length 8  ← longest, wins
+//   "/cgi-bin" matches with length 8  -> longest, wins
 //
 // For URI "/anything" against just "/", "/" wins (always matches everything).
 //
@@ -109,16 +109,17 @@ std::string	Router::build_fs_path(const std::string& uri_path,
 
 	std::string root = loc.root;
 
-	// Avoid double slash:
-	if (!root.empty() && root[root.size() - 1] == '/'
-		&& !tail.empty() && tail[0] == '/')
-		root.resize(root.size() - 1);
-
-	// If tail is empty AND uri exactly equals the location path,
-	// the user is requesting the location's root directory itself
-	// Make sure we produce "/var/www" (no trailing junk)
 	if (tail.empty())
 		return root;
+
+	// Ensure exactly one '/' between root and tail
+	bool root_slash = !root.empty() && root[root.size() - 1] == '/';
+	bool tail_slash = tail[0] == '/';
+
+	if (root_slash && tail_slash)
+		root.resize(root.size() - 1);
+	else if (!root_slash && !tail_slash)
+		return root + "/" + tail;
 
 	return root + tail;
 }

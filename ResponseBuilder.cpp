@@ -278,6 +278,46 @@ std::string	ResponseBuilder::handle_delete(const RouteDecision& d,
 }
 
 // ============================================================
+// handle_upload: POST to a location with upload_store
+// ============================================================
+// Defers all the work to UploadHandler. On success we return 201 with
+// a tiny JSON-ish body so the client can confirm what got saved. On
+// failure we return the error code the handler decided on, with a
+// short HTML page.
+std::string	ResponseBuilder::handle_upload(const HttpRequest& req,
+										   const RouteDecision& d,
+										   const ServerConfig& server) const
+{
+	if (d.location == NULL)
+		return build_error(500, server);
+
+	if (d.effective_body_limit >= 0
+		&& req.body.size() > static_cast<size_t>(d.effective_body_limit))
+		return build_error(413, server);
+
+	UploadResult result = _upload_handler.handle(req, *d.location);
+
+	if (result.status_code != 201)
+		return build_error(result.status_code, server);
+
+	std::stringstream body;
+	body << "{\r\n"
+		<< "  \"status\": \"ok\",\r\n"
+		<< "  \"filename\": \"" << result.saved_filename << "\",\r\n"
+		<< "  \"bytes\": " << req.body.size() << "\r\n"
+		<< "}\r\n";
+
+	std::stringstream extra;
+	extra << "Location: " << req.path;
+	if (!req.path.empty() && req.path[req.path.size() - 1] != '/')
+		extra << "/";
+	extra << result.saved_filename << "\r\n";
+
+	return make_response(201, "application/json",
+		body.str(), extra.str());
+}
+
+// ============================================================
 // build_redirect: turn KIND_REDIRECT into a 3xx response
 // ============================================================
 std::string	ResponseBuilder::build_redirect(const RouteDecision& d) const
@@ -314,9 +354,11 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req,
 									 const RouteDecision& d,
 									 const ServerConfig& server) const
 {
-	// DELETE goes its own path. POST will go to upload
+	// DELETE and POST go their own paths
 	if (req.method == "DELETE")
 		return handle_delete(d, server);
+	if (req.method == "POST")
+		return handle_upload(req, d, server);
 
 	const std::string& root =
 		d.location ? d.location->root : std::string();
@@ -426,11 +468,21 @@ std::string	ResponseBuilder::build_error(int code,
 		if (read_file(fs_path, body))
 			return make_response(code, MimeTypes::from_path(fs_path),
 				body, "");
-		// Custom page failed to load -> fall through to built-in
+		// Custom page failed to load -> fall through to default
 	}
 
-	// Built-in default error page
-	std::stringstream body;
+	// Default: try www/errors/{code}.html relative to first location's root
+	if (!server.locations.empty())
+	{
+		std::ostringstream default_path;
+		default_path << server.locations[0].root << "/errors/" << code << ".html";
+		std::string body;
+		if (read_file(default_path.str(), body))
+			return make_response(code, "text/html; charset=utf-8", body, "");
+	}
+
+	// Last-resort inline fallback
+	std::ostringstream body;
 	body << "<!DOCTYPE html>\r\n"
 		<< "<html><head><title>" << code << " " << reason_phrase(code)
 		<< "</title></head>\r\n"
@@ -456,7 +508,6 @@ std::string	ResponseBuilder::build(const HttpRequest& req,
 		case RouteDecision::KIND_ERROR:
 			return build_error(d.error_code, server);
 		case RouteDecision::KIND_CGI:
-			// Module 8 territory — until then, 501.
 			return build_error(501, server);
 		default:
 			return build_error(500, server);

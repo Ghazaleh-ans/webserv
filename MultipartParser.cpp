@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/03 16:57:21 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/03 16:57:22 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/05 16:19:41 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,12 +49,10 @@ bool	MultipartParser::starts_with_ci(const std::string& s,
 //
 // We do a forgiving parse: find "boundary=" anywhere after the media
 // type, strip surrounding quotes if any, return whatever's left up to
-// the next ';' or end of string. RFC says boundary must be at most
-// 70 chars; we don't enforce that since longer-but-otherwise-valid
-// boundaries are common in the wild.
+// the next ';' or end of string
 std::string	MultipartParser::extract_boundary(const std::string& content_type)
 {
-	// First confirm the type is multipart/form-data.
+	// First confirm the type is multipart/form-data
 	if (!starts_with_ci(content_type, "multipart/form-data"))
 		return "";
 

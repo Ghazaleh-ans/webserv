@@ -237,13 +237,17 @@ UploadResult	UploadHandler::handle(const HttpRequest& req,
 		return result;
 	}
 
-	// Raw-bytes path: treat the URI's last path segment as the desired
-	// filename. e.g. POST /upload/report.pdf  -> save as report.pdf.
-	// If the URI has no trailing name, fall back to default.
-	std::string desired_name;
-	size_t slash = req.path.find_last_of('/');
-	if (slash != std::string::npos && slash + 1 < req.path.size())
-		desired_name = req.path.substr(slash + 1);
+	// Raw-bytes path: filename priority:
+	//   1. X-Filename header (set by browser form / curl -H)
+	//   2. URI tail  e.g. POST /upload/report.pdf
+	//   3. default (upload_<timestamp>.bin)
+	std::string desired_name = req.header("x-filename");
+	if (desired_name.empty())
+	{
+		size_t slash = req.path.find_last_of('/');
+		if (slash != std::string::npos && slash + 1 < req.path.size())
+			desired_name = req.path.substr(slash + 1);
+	}
 
 	std::string used;
 	if (!write_file(loc.upload_store, desired_name, req.body, used))

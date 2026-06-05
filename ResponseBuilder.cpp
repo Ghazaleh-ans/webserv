@@ -354,9 +354,11 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req,
 									 const RouteDecision& d,
 									 const ServerConfig& server) const
 {
-	// DELETE goes its own path. POST will go to upload
+	// DELETE and POST go their own paths
 	if (req.method == "DELETE")
 		return handle_delete(d, server);
+	if (req.method == "POST")
+		return handle_upload(req, d, server);
 
 	const std::string& root =
 		d.location ? d.location->root : std::string();

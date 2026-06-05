@@ -468,11 +468,21 @@ std::string	ResponseBuilder::build_error(int code,
 		if (read_file(fs_path, body))
 			return make_response(code, MimeTypes::from_path(fs_path),
 				body, "");
-		// Custom page failed to load -> fall through to built-in
+		// Custom page failed to load -> fall through to default
 	}
 
-	// Built-in default error page
-	std::stringstream body;
+	// Default: try www/errors/{code}.html relative to first location's root
+	if (!server.locations.empty())
+	{
+		std::ostringstream default_path;
+		default_path << server.locations[0].root << "/errors/" << code << ".html";
+		std::string body;
+		if (read_file(default_path.str(), body))
+			return make_response(code, "text/html; charset=utf-8", body, "");
+	}
+
+	// Last-resort inline fallback
+	std::ostringstream body;
 	body << "<!DOCTYPE html>\r\n"
 		<< "<html><head><title>" << code << " " << reason_phrase(code)
 		<< "</title></head>\r\n"
@@ -498,7 +508,6 @@ std::string	ResponseBuilder::build(const HttpRequest& req,
 		case RouteDecision::KIND_ERROR:
 			return build_error(d.error_code, server);
 		case RouteDecision::KIND_CGI:
-			// Module 8 territory — until then, 501.
 			return build_error(501, server);
 		default:
 			return build_error(500, server);

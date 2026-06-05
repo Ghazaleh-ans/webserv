@@ -36,7 +36,9 @@ SRCS		= main.cpp \
 			  RouteDecision.cpp \
 			  Router.cpp \
 			  ResponseBuilder.cpp \
-			  MimeTypes.cpp
+			  MimeTypes.cpp \
+			  MultipartParser.cpp \
+			  UploadHandler.cpp
 
 # Objects
 OBJ_DIR		= obj
@@ -56,7 +58,9 @@ HEADERS	= Tokenizer.hpp \
 			  RouteDecision.hpp \
 			  Router.hpp \
 			  ResponseBuilder.hpp \
-			  MimeTypes.hpp
+			  MimeTypes.hpp \
+			  MultipartParser.hpp \
+			  UploadHandler.hpp
 
 all: $(NAME)
 

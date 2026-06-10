@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:29 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/01 14:32:36 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/10 18:58:37 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -90,16 +90,43 @@ void	Server::build_pollfds()
 	// Clients: always want POLLIN -> more request data
 	// only ask for POLLOUT -> when we actually have something to send
 	// Asking for POLLOUT unconditionally -> poll() returns immediately every iteration -> busy-loop disaster
+	// when a CGI is running for this client, we DON'T poll
+	// the client socket for reads — we're not going to act on more
+	// request data until the CGI completes. We do still poll for writes
+	// once the CGI is done and _out_buffer has bytes.
 	for (std::map<int, Client*>::iterator it = _clients.begin();
 		it != _clients.end(); ++it)
 	{
 		struct pollfd pfd;
 		pfd.fd = it->first;
-		pfd.events = POLLIN;
+		pfd.events = 0;
+		if (!it->second->has_cgi())
+			pfd.events |= POLLIN;
 		if (it->second->has_data_to_send())
 			pfd.events |= POLLOUT;
 		pfd.revents = 0;
 		_pfds.push_back(pfd);
+	}
+
+	// CGI pipe fds. Each running CGI may have a stdin fd (we write to
+	// it) and a stdout fd (we read from it). We ask for the relevant
+	// event on each.
+	for (std::map<int, Client*>::iterator it = _cgi_fd_to_client.begin();
+		it != _cgi_fd_to_client.end(); ++it)
+	{
+		Client* c = it->second;
+		if (c->cgi() == NULL)
+			continue;
+		struct pollfd pfd;
+		pfd.fd = it->first;
+		pfd.events = 0;
+		pfd.revents = 0;
+		if (it->first == c->cgi()->stdin_fd() && c->cgi()->wants_write())
+			pfd.events |= POLLOUT;
+		else if (it->first == c->cgi()->stdout_fd() && c->cgi()->wants_read())
+			pfd.events |= POLLIN;
+		if (pfd.events != 0)
+			_pfds.push_back(pfd);
 	}
 }
 
@@ -141,6 +168,10 @@ void	Server::handle_client_event(int fd, short revents)
 			drop_client(fd);
 			return;
 		}
+		// If on_readable started a CGI session, register its pipe fds
+		// with the poll loop so we get events for them next iteration.
+		if (c->has_cgi())
+			register_cgi_fds(c);
 	}
 	if (revents & POLLOUT)
 	{
@@ -154,6 +185,124 @@ void	Server::handle_client_event(int fd, short revents)
 	// Client may have decided "I'm done after this send" — honour that.
 	if (c->should_close() && !c->has_data_to_send())
 		drop_client(fd);
+}
+
+// ============================================================
+// CGI fd management
+// ============================================================
+bool	Server::is_cgi_fd(int fd) const
+{
+	return _cgi_fd_to_client.find(fd) != _cgi_fd_to_client.end();
+}
+
+void	Server::register_cgi_fds(Client* c)
+{
+	if (c->cgi() == NULL)
+		return;
+	if (c->cgi()->stdin_fd() >= 0)
+		_cgi_fd_to_client[c->cgi()->stdin_fd()] = c;
+	if (c->cgi()->stdout_fd() >= 0)
+		_cgi_fd_to_client[c->cgi()->stdout_fd()] = c;
+}
+
+void	Server::unregister_cgi_fds(Client* c)
+{
+	// Walk the map and erase any entry pointing to this client.
+	// (We can't reference the now-deleted CgiSession's fds.)
+	for (std::map<int, Client*>::iterator it = _cgi_fd_to_client.begin();
+		it != _cgi_fd_to_client.end(); )
+	{
+		if (it->second == c)
+		{
+			std::map<int, Client*>::iterator to_erase = it;
+			++it;
+			_cgi_fd_to_client.erase(to_erase);
+		}
+		else
+		{
+			++it;
+		}
+	}
+}
+
+void	Server::handle_cgi_event(int fd, short revents)
+{
+	std::map<int, Client*>::iterator it = _cgi_fd_to_client.find(fd);
+	if (it == _cgi_fd_to_client.end())
+		return;
+	Client* c = it->second;
+	if (c->cgi() == NULL)
+		return;
+
+	// CGI activity counts as Client activity, so the idle-timeout
+	// sweep doesn't reap a Client just because the user's request
+	// is being processed by a slow script.
+	c->touch();
+
+	CgiSession* cgi = c->cgi();
+	bool ok = true;
+
+	if (fd == cgi->stdout_fd() && (revents & (POLLIN | POLLHUP)))
+	{
+		ok = cgi->on_readable_stdout();
+	}
+	else if (fd == cgi->stdin_fd())
+	{
+		if (revents & (POLLHUP | POLLERR | POLLNVAL))
+		{
+			// Child closed its stdin early (e.g. didn't read body).
+			// on_writable_stdin() will write, get EPIPE (n<=0), close fd.
+			cgi->on_writable_stdin();
+		}
+		else if (revents & POLLOUT)
+		{
+			ok = cgi->on_writable_stdin();
+		}
+	}
+
+	if (!ok)
+	{
+		// Force termination — finalize_cgi in check_cgi_progress will
+		// produce a 502.
+		cgi->kill_child();
+	}
+}
+
+// Walk every running CGI, check_child(), and finalize the ones that
+// are done. Called once per loop iteration, after the event dispatch.
+void	Server::check_cgi_progress()
+{
+	std::time_t now = std::time(NULL);
+	std::vector<Client*> to_finalize;
+
+	for (std::map<int, Client*>::iterator it = _clients.begin();
+		it != _clients.end(); ++it)
+	{
+		Client* c = it->second;
+		if (!c->has_cgi())
+			continue;
+		CgiSession* cgi = c->cgi();
+		cgi->check_child();
+
+		// Timeout check: if the CGI has been silent too long, kill it.
+		// kill_child() also closes our pipe fds so is_finished() flips
+		// to true on the same iteration — we finalize below.
+		if (!cgi->is_finished()
+			&& now - cgi->last_active() > CGI_TIMEOUT_SECONDS)
+		{
+			cgi->kill_child();
+		}
+
+		if (cgi->is_finished())
+			to_finalize.push_back(c);
+	}
+
+	for (size_t i = 0; i < to_finalize.size(); ++i)
+	{
+		Client* c = to_finalize[i];
+		unregister_cgi_fds(c);
+		c->finalize_cgi();
+	}
 }
 
 void	Server::sweep_timeouts()
@@ -177,7 +326,8 @@ void	Server::drop_client(int fd)
 	std::map<int, Client*>::iterator it = _clients.find(fd);
 	if (it == _clients.end())
 		return;
-	delete it->second; // destructor closes the fd
+	unregister_cgi_fds(it->second);
+	delete it->second; // destructor closes the fd and kills any CGI
 	_clients.erase(it);
 }
 
@@ -203,6 +353,8 @@ void	Server::run()
 		if (n == 0)
 		{
 			// Timeout: no events, but we still want to sweep idle clients
+			// and check whether any CGI children have exited.
+			check_cgi_progress();
 			sweep_timeouts();
 			continue;
 		}
@@ -218,12 +370,17 @@ void	Server::run()
 				if (_pfds[i].revents & POLLIN)
 					handle_listener_event(lis);
 			}
+			else if (is_cgi_fd(_pfds[i].fd))
+			{
+				handle_cgi_event(_pfds[i].fd, _pfds[i].revents);
+			}
 			else
 			{
 				handle_client_event(_pfds[i].fd, _pfds[i].revents);
 			}
 		}
 
+		check_cgi_progress();
 		sweep_timeouts();
 	}
 

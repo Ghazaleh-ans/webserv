@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/01 17:47:53 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/10 19:20:54 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,8 @@ Client::Client(int fd, const ServerConfig& config)
 	  _out_buffer(),
 	  _last_active(std::time(NULL)),
 	  _should_close(false),
-	  _response_built(false)
+	  _response_built(false),
+	  _cgi(NULL)
 {
 	if (_config->client_max_body_size > 0)
 		_parser.set_max_body_size(
@@ -41,6 +42,11 @@ Client::Client(int fd, const ServerConfig& config)
 
 Client::~Client()
 {
+	if (_cgi != NULL)
+	{
+		delete _cgi;
+		_cgi = NULL;
+	}
 	SocketUtils::safe_close(_fd);
 }
 
@@ -105,10 +111,27 @@ bool	Client::on_writable()
 
 void	Client::build_response()
 {
-	_response_built = true;
-
 	const HttpRequest& req = _parser.request();
 	RouteDecision d = _router.route(req, *_config);
+
+	if (d.kind == RouteDecision::KIND_CGI)
+	{
+		// CGI is async: leave _out_buffer empty and _response_built false
+		// Server polls the pipe fds and calls finalize_cgi() once done
+		try
+		{
+			_cgi = new CgiSession(req, d.fs_path, d.cgi_interpreter,
+								  *d.location, *_config);
+		}
+		catch (const std::exception&)
+		{
+			_response_built = true;
+			_out_buffer = _response_builder.build_error(502, *_config);
+		}
+		return;
+	}
+
+	_response_built = true;
 	_out_buffer = _response_builder.build(req, d, *_config);
 }
 
@@ -116,4 +139,32 @@ void	Client::build_error_response(int code)
 {
 	_response_built = true;
 	_out_buffer = _response_builder.build_error(code, *_config);
+}
+
+CgiSession*	Client::cgi() const { return _cgi; }
+bool		Client::has_cgi() const { return _cgi != NULL; }
+
+void	Client::finalize_cgi()
+{
+	if (_cgi == NULL)
+		return;
+	// Refresh idle timer — the CGI just produced (or failed to produce)
+	// a response, which counts as activity from the user's perspective.
+	// Without this, a CGI that took close to CLIENT_TIMEOUT_SECONDS
+	// to run would have the Client reaped by sweep_timeouts BEFORE we
+	// get a chance to send the response.
+	touch();
+	// Killed (timeout, fatal I/O error) -> emit a proper error response,
+	// not whatever partial bytes leaked. Otherwise use the CGI's output
+	if (_cgi->was_killed())
+	{
+		_out_buffer = _response_builder.build_error(_cgi->failure_code(), *_config);
+	}
+	else
+	{
+		_out_buffer = _cgi->build_response();
+	}
+	delete _cgi;
+	_cgi = NULL;
+	_response_built = true;
 }

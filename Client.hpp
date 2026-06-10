@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:02 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/01 17:36:14 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/10 19:20:52 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 # include "HttpRequestParser.hpp"
 # include "Router.hpp"
 # include "ResponseBuilder.hpp"
+# include "CgiSession.hpp"
 
 // One Client per active TCP connection. Holds:
 //   - the fd
@@ -67,6 +68,13 @@ public:
 	// Build an error response when the parser fails with a status code.
 	void					build_error_response(int status_code);
 
+	// CGI hooks: the Server polls the CGI's pipe fds and the
+	// Client owns the CgiSession. When the CGI finishes (is_finished()
+	// true), the Server calls finalize_cgi to drain output into _out_buffer
+	CgiSession*				cgi() const;
+	bool					has_cgi() const;
+	void					finalize_cgi();
+
 private:
 	int						_fd;
 	const ServerConfig*		_config;
@@ -77,6 +85,9 @@ private:
 	std::time_t				_last_active;
 	bool					_should_close;
 	bool					_response_built;
+
+	// Non-NULL while a CGI is running for this client. Owned here
+	CgiSession*				_cgi;
 
 	Client(const Client&);
 	Client&	operator=(const Client&);

@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/21 16:12:29 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/03 11:08:13 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/10 19:12:37 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,7 @@ struct RouteDecision
 		KIND_SERVE,      // serve a filesystem path
 		KIND_REDIRECT,   // emit a 3xx with Location header
 		KIND_ERROR,      // emit an error status (e.g. 405, 404, 413)
-		KIND_CGI         // run a CGI script (Module 8) — not used yet
+		KIND_CGI         // run a CGI script (handled by Client + CgiSession)
 	};
 
 	Kind		kind;
@@ -45,6 +45,9 @@ struct RouteDecision
 	// --- KIND_REDIRECT fields ---
 	int			redirect_code;   // 301, 302, etc
 	std::string	redirect_url;    // value for Location header
+
+	// --- KIND_CGI fields ---
+	std::string	cgi_interpreter;  // e.g. "/usr/bin/python3"
 
 	// --- KIND_ERROR fields ---
 	int			error_code;      // 404, 405, 413, ...

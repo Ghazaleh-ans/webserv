@@ -38,7 +38,8 @@ SRCS		= main.cpp \
 			  ResponseBuilder.cpp \
 			  MimeTypes.cpp \
 			  MultipartParser.cpp \
-			  UploadHandler.cpp
+			  UploadHandler.cpp \
+			  CgiSession.cpp
 
 # Objects
 OBJ_DIR		= obj
@@ -60,7 +61,8 @@ HEADERS	= Tokenizer.hpp \
 			  ResponseBuilder.hpp \
 			  MimeTypes.hpp \
 			  MultipartParser.hpp \
-			  UploadHandler.hpp
+			  UploadHandler.hpp \
+			  CgiSession.hpp
 
 all: $(NAME)
 

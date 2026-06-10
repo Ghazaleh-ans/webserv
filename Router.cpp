@@ -6,11 +6,12 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/21 16:12:44 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/05 16:47:33 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/10 19:05:16 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Router.hpp"
+#include <sys/stat.h>
 
 Router::Router() {}
 Router::~Router() {}
@@ -190,5 +191,30 @@ RouteDecision	Router::route(const HttpRequest& req,
 	d.index_file = loc->index;
 	d.autoindex = loc->autoindex;
 
+	// CGI detection. If the resolved file's extension matches
+	// one of the location's cgi_handlers, switch to KIND_CGI and stash
+	// the interpreter. The actual fork/exec happens in CgiSession.
+	if (!loc->cgi_handlers.empty() && !d.is_directory_request)
+	{
+		size_t dot = d.fs_path.find_last_of('.');
+		size_t slash = d.fs_path.find_last_of('/');
+		if (dot != std::string::npos && (slash == std::string::npos || dot > slash))
+		{
+			std::string ext = d.fs_path.substr(dot);  //".py", ".php", ...
+			std::map<std::string, std::string>::const_iterator it = loc->cgi_handlers.find(ext);
+			if (it != loc->cgi_handlers.end())
+			{
+				struct stat st;
+				if (stat(d.fs_path.c_str(), &st) != 0 || !S_ISREG(st.st_mode))
+				{
+					d.kind = RouteDecision::KIND_ERROR;
+					d.error_code = 404;
+					return d;
+				}
+				d.kind = RouteDecision::KIND_CGI;
+				d.cgi_interpreter = it->second;
+			}
+		}
+	}
 	return d;
 }

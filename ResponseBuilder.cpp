@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   ResponseBuilder.cpp                                :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/06/01 17:43:01 by gansari           #+#    #+#             */
+/*   Updated: 2026/06/10 19:17:42 by gansari          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "ResponseBuilder.hpp"
 #include "MimeTypes.hpp"
 
@@ -41,6 +53,8 @@ std::string	ResponseBuilder::reason_phrase(int code) const
 		case 431: return "Request Header Fields Too Large";
 		case 500: return "Internal Server Error";
 		case 501: return "Not Implemented";
+		case 502: return "Bad Gateway";
+		case 504: return "Gateway Timeout";
 		case 505: return "HTTP Version Not Supported";
 		default:  return "Status";
 	}
@@ -342,12 +356,12 @@ std::string	ResponseBuilder::build_redirect(const RouteDecision& d) const
 //   1. Reject DELETE requests by routing them to handle_delete (above)
 //   2. Path traversal check (refuse 403 if escaping root)
 //   3. stat() the resolved path
-//      - missing      → 404
+//      - missing      -> 404
 //      - directory:
 //          a. try `<fs_path>/<index_file>` if index is set
-//          b. else if autoindex → list_directory
-//          c. else → 403
-//      - regular file → read it, send with MIME type
+//          b. else if autoindex -> list_directory
+//          c. else -> 403
+//      - regular file -> read it, send with MIME type
 //   4. Anything that fails along the way → use server's custom error
 //      pages from the parser if available, otherwise built-in HTML.
 std::string	ResponseBuilder::build_serve(const HttpRequest& req,
@@ -357,7 +371,11 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req,
 	// DELETE and POST go their own paths
 	if (req.method == "DELETE")
 		return handle_delete(d, server);
-	if (req.method == "POST")
+	// POST with upload_store configured -> upload handler.
+	// Without upload_store, a POST to a normal location just falls
+	// through to the GET-like serve path (which usually 404s — that's
+	// fine, the user shouldn't have POSTed to a static-only route).
+	if (req.method == "POST" && d.location != NULL && !d.location->upload_store.empty())
 		return handle_upload(req, d, server);
 
 	const std::string& root =
@@ -416,7 +434,7 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req,
 			return make_response(200, "text/html; charset=utf-8", body, "");
 		}
 
-		// Directory access without index and without autoindex → 403.
+		// Directory access without index and without autoindex -> 403.
 		return build_error(403, server);
 	}
 
@@ -508,7 +526,7 @@ std::string	ResponseBuilder::build(const HttpRequest& req,
 		case RouteDecision::KIND_ERROR:
 			return build_error(d.error_code, server);
 		case RouteDecision::KIND_CGI:
-			return build_error(501, server);
+			return build_error(500, server); // This will never happen
 		default:
 			return build_error(500, server);
 	}

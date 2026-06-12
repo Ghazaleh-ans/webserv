@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:29 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/10 18:58:37 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/12 14:55:53 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,10 +48,27 @@ void	Server::request_stop()
 
 void	Server::start()
 {
-	// One Listener per server block
+	// Reject configs that share the same host:port  
+	// Only one socket can bind to an address
 	for (size_t i = 0; i < _configs.size(); ++i)
 	{
-		Listener* lis = new Listener(_configs[i]);  // may throw on bind error
+		for (size_t j = i + 1; j < _configs.size(); ++j)
+		{
+			if (_configs[i].host == _configs[j].host &&
+				_configs[i].port == _configs[j].port)
+			{
+				std::ostringstream msg;
+				msg << "duplicate server: " << _configs[i].host
+					<< ":" << _configs[i].port
+					<< " is defined more than once in the config file";
+				throw std::runtime_error(msg.str());
+			}
+		}
+	}
+
+	for (size_t i = 0; i < _configs.size(); ++i)
+	{
+		Listener* lis = new Listener(_configs[i]);
 		_listeners.push_back(lis);
 		std::cout << "listening on " << _configs[i].host
 			<< ":" << _configs[i].port

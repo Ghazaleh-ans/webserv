@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/20 13:32:08 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/01 16:29:47 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/11 18:34:57 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -231,6 +231,12 @@ bool	HttpRequestParser::parse_headers()
 //   3. Neither                     → no body, request is complete
 void	HttpRequestParser::decide_post_header_state()
 {
+	if (_req.version == "HTTP/1.1" && !_req.has_header("host"))
+	{
+		fail(400);
+		return;
+	}
+
 	std::string te = _req.header("transfer-encoding");
 	if (!te.empty())
 	{

@@ -18,10 +18,10 @@ FCLEAN	= 🧼
 # Compiler
 NAME		= webserv
 CXX			= c++
-CXXFLAGS	= -Wall -Wextra -Werror -std=c++98 -I.
+CXXFLAGS	= -Wall -Wextra -Werror -std=c++98 -Iinclude
 
 # Sources
-SRC_DIR		= .
+SRC_DIR		= src
 SRCS		= main.cpp \
 			  Tokenizer.cpp \
 			  ConfigParser.cpp \
@@ -45,8 +45,10 @@ SRCS		= main.cpp \
 OBJ_DIR		= obj
 OBJS		= $(addprefix $(OBJ_DIR)/, $(SRCS:.cpp=.o))
 
-#Headers
-HEADERS	= Tokenizer.hpp \
+# Headers
+INC_DIR		= include
+HEADERS		= $(addprefix $(INC_DIR)/, \
+			  Tokenizer.hpp \
 			  ConfigParser.hpp \
 			  ServerConfig.hpp \
 			  LocationConfig.hpp \
@@ -62,7 +64,7 @@ HEADERS	= Tokenizer.hpp \
 			  MimeTypes.hpp \
 			  MultipartParser.hpp \
 			  UploadHandler.hpp \
-			  CgiSession.hpp
+			  CgiSession.hpp)
 
 all: $(NAME)
 

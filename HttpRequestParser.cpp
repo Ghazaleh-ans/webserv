@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/20 13:32:08 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/11 18:34:57 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/12 10:51:34 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -80,6 +80,38 @@ bool	HttpRequestParser::extract_line(std::string& out)
 	return true;
 }
 
+static std::string percent_decode(const std::string& s)
+{
+	std::string out;
+	out.reserve(s.size());
+	for (size_t i = 0; i < s.size(); ++i)
+	{
+		if (s[i] == '%' && i + 2 < s.size()
+			&& std::isxdigit(static_cast<unsigned char>(s[i + 1]))
+			&& std::isxdigit(static_cast<unsigned char>(s[i + 2])))
+		{
+			char hex[3] = { s[i + 1], s[i + 2], '\0' };
+			unsigned char c = static_cast<unsigned char>(std::strtol(hex, NULL, 16));
+			// To avoid: /etc/passwd%00.jpg -> /etc/passwd
+			// To avoid: /file%2F../secret -> /file/../sexret
+			// %00 -> 0x00(null byte) -> end of string
+			// %2F -> '/'
+			if (c == 0x00 || c == '/')
+			{
+				out += '%';
+				out += s[i + 1];
+				out += s[i + 2];
+			}
+			else
+				out += static_cast<char>(c);
+			i += 2;
+		}
+		else
+			out += s[i];
+	}
+	return out;
+}
+
 // [path ? query]
 void	HttpRequestParser::split_uri()
 {
@@ -94,6 +126,7 @@ void	HttpRequestParser::split_uri()
 		_req.path = _req.uri.substr(0, q);
 		_req.query = _req.uri.substr(q + 1);
 	}
+	_req.path = percent_decode(_req.path);
 }
 
 // ===========================================================

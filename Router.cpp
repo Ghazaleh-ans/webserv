@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/21 16:12:44 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/10 19:05:16 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/15 16:16:02 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -141,12 +141,12 @@ long	Router::effective_body_limit(const LocationConfig& loc,
 // The main entry point
 // ============================================================
 // Order of checks matters:
-//   1. Find a matching location.       (no match → 404)
-//   2. If location has `return` → emit redirect immediately,
+//   1. Find a matching location.       (no match -> 404)
+//   2. If location has `return` -> emit redirect immediately,
 //      skipping the method check. NGINX does this too; the rationale
 //      is that a redirect doesn't actually consume the resource, so
 //      methods don't apply.
-//   3. Check method is allowed.        (not allowed → 405)
+//   3. Check method is allowed.        (not allowed -> 405)
 //   4. Compute fs_path and metadata later
 RouteDecision	Router::route(const HttpRequest& req,
 							   const ServerConfig& server) const

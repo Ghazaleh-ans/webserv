@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart TD
-    START["Client::build_response()\nRouteDecision = KIND_CGI"] --> CONS["new CgiSession(\n  request, script_path,\n  interpreter, location, config\n)"]
+    START["Client::build_response()\nRouteDecision = KIND_CGI"] --> CONS["new CgiSession(\n  request, script_path,\n  interpreter, location, config)"]
 
     CONS --> ENV["build_env()\nCGI/1.1 meta-variables:\nSCRIPT_FILENAME, PATH_INFO\nQUERY_STRING, REQUEST_METHOD\nCONTENT_TYPE, CONTENT_LENGTH\nHTTP_* for all request headers\nSERVER_NAME, SERVER_PORT ..."]
 

@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/08 12:47:45 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/15 15:03:43 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/15 17:27:56 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -161,12 +161,12 @@ CgiSession::CgiSession(const HttpRequest& req,
 		throw std::runtime_error("CGI: pipe(stdout) failed");
 	}
 
-	// Build env BEFORE fork —->vectors aren't safe to allocate in the
-	// child's restricted environment (we shouldn't allocate after fork).
+	// Build env BEFORE fork -> vectors aren't safe to allocate in the
+	// child's restricted environment (we shouldn't allocate after fork)
 	std::vector<std::string> env_strings =
 		build_env(req, script_path, server);
 
-	// Compute the script's directory and basename for use in the child.
+	// Compute the script's directory and basename for use in the child
 	// After chdir(script_dir), argv[1] must be the bare filename
 	// passing the full original path would be interpreted relative to
 	// the new cwd and produce a "can't open file" error.

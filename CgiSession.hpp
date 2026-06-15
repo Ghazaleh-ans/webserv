@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/08 12:47:35 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/08 18:40:27 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/15 15:02:45 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,7 +42,6 @@ public:
 	CgiSession(const HttpRequest& req,
 			   const std::string& script_path,
 			   const std::string& interpreter,
-			   const LocationConfig& loc,
 			   const ServerConfig& server);
 	~CgiSession();
 
@@ -102,7 +101,6 @@ private:
 	// Setup helpers used by the constructor.
 	std::vector<std::string>	build_env(const HttpRequest& req,
 										  const std::string& script_path,
-										  const LocationConfig& loc,
 										  const ServerConfig& server) const;
 
 	CgiSession(const CgiSession&);

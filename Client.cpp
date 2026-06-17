@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/10 19:20:54 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/15 15:02:49 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -120,8 +120,7 @@ void	Client::build_response()
 		// Server polls the pipe fds and calls finalize_cgi() once done
 		try
 		{
-			_cgi = new CgiSession(req, d.fs_path, d.cgi_interpreter,
-								  *d.location, *_config);
+			_cgi = new CgiSession(req, d.fs_path, d.cgi_interpreter, *_config);
 		}
 		catch (const std::exception&)
 		{

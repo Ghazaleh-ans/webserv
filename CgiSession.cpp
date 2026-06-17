@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/08 12:47:45 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/08 18:47:12 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/15 17:27:56 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,7 +38,6 @@ static const size_t	CGI_READ_CHUNK = 8192;
 // which is how the CGI sees things like User-Agent and Cookie
 std::vector<std::string>	CgiSession::build_env(const HttpRequest& req,
 												   const std::string& script_path,
-												   const LocationConfig& loc,
 												   const ServerConfig& server) const
 {
 	std::vector<std::string> env;
@@ -110,8 +109,6 @@ std::vector<std::string>	CgiSession::build_env(const HttpRequest& req,
 		}
 		env.push_back(name + "=" + it->second);
 	}
-
-	(void)loc;  // currently unused; future extension for per-location env
 	return env;
 }
 
@@ -139,7 +136,6 @@ std::vector<std::string>	CgiSession::build_env(const HttpRequest& req,
 CgiSession::CgiSession(const HttpRequest& req,
 					   const std::string& script_path,
 					   const std::string& interpreter,
-					   const LocationConfig& loc,
 					   const ServerConfig& server)
 	: _pid(-1),
 	  _stdin_fd(-1),
@@ -165,12 +161,12 @@ CgiSession::CgiSession(const HttpRequest& req,
 		throw std::runtime_error("CGI: pipe(stdout) failed");
 	}
 
-	// Build env BEFORE fork —->vectors aren't safe to allocate in the
-	// child's restricted environment (we shouldn't allocate after fork).
+	// Build env BEFORE fork -> vectors aren't safe to allocate in the
+	// child's restricted environment (we shouldn't allocate after fork)
 	std::vector<std::string> env_strings =
-		build_env(req, script_path, loc, server);
+		build_env(req, script_path, server);
 
-	// Compute the script's directory and basename for use in the child.
+	// Compute the script's directory and basename for use in the child
 	// After chdir(script_dir), argv[1] must be the bare filename
 	// passing the full original path would be interpreted relative to
 	// the new cwd and produce a "can't open file" error.

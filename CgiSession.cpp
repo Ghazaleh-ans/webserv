@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/08 12:47:45 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/15 17:27:56 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/18 16:44:42 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -149,8 +149,8 @@ CgiSession::CgiSession(const HttpRequest& req,
 	  _killed_by_timeout(false),
 	  _last_active(std::time(NULL))
 {
-	int	stdin_pipe[2];
-	int	stdout_pipe[2];
+	int	stdin_pipe[2]; // server -> CGI child (send request body)
+	int	stdout_pipe[2]; // CGI child -> server (receive CGI's response)
 
 	if (pipe(stdin_pipe) == -1)
 		throw std::runtime_error("CGI: pipe(stdin) failed");
@@ -161,8 +161,6 @@ CgiSession::CgiSession(const HttpRequest& req,
 		throw std::runtime_error("CGI: pipe(stdout) failed");
 	}
 
-	// Build env BEFORE fork -> vectors aren't safe to allocate in the
-	// child's restricted environment (we shouldn't allocate after fork)
 	std::vector<std::string> env_strings =
 		build_env(req, script_path, server);
 
@@ -198,8 +196,12 @@ CgiSession::CgiSession(const HttpRequest& req,
 	{
 		// --- CHILD ---
 		// From here on, ANY error -> _exit(1). We can't throw across fork.
-		// We use _exit (not exit) to skip C++ static destructors which
-		// would try to flush parent's stdio buffers in the child.
+
+		// exit() does three things before terminating that are dangerous in a child process:
+		// Flushes stdio buffers -> the child inherited a copy of the parent's buffered data. Flushing it causes that data to be written twice: once by the child, once later by the parent.
+		// Runs atexit() handlers -> the child inherited the parent's registered cleanup functions. Running them in the child corrupts shared resources (closing file descriptors, database connections, etc.) that the parent still needs.
+		// Runs C++ destructors -> same problem as atexit: destroys objects that belong to the parent's context.
+		// _exit() skips all three and goes straight to the kernel -> the child dies cleanly without touching anything the parent owns.
 
 		// Wire stdin/stdout.
 		if (dup2(stdin_pipe[0], STDIN_FILENO) == -1)  _exit(1);
@@ -211,7 +213,7 @@ CgiSession::CgiSession(const HttpRequest& req,
 		close(stdout_pipe[0]);
 		close(stdout_pipe[1]);
 
-		// chdir to script directory — subject requirement.
+		// chdir to script directory
 		if (chdir(script_dir.c_str()) == -1) { /* non-fatal, continue */ }
 
 		// Build argv: interpreter, script, NULL.
@@ -220,7 +222,6 @@ CgiSession::CgiSession(const HttpRequest& req,
 		// (e.g. has a shebang or is a binary). In that case argv[0]
 		// is the script path itself.
 		// argv[0] = interpreter (or script itself), argv[1] = script basename.
-		// We already chdir'd into script_dir, so just the filename is correct.
 		std::vector<char*> argv_vec;
 		if (interpreter.empty())
 		{
@@ -233,7 +234,7 @@ CgiSession::CgiSession(const HttpRequest& req,
 		}
 		argv_vec.push_back(NULL);
 
-		// Build envp from env_strings.
+		// Build envp from env_strings -> C style
 		std::vector<char*> envp;
 		for (size_t i = 0; i < env_strings.size(); ++i)
 			envp.push_back(const_cast<char*>(env_strings[i].c_str()));
@@ -256,8 +257,8 @@ CgiSession::CgiSession(const HttpRequest& req,
 	close(stdin_pipe[0]);
 	close(stdout_pipe[1]);
 
-	_stdin_fd = stdin_pipe[1];
-	_stdout_fd = stdout_pipe[0];
+	_stdin_fd = stdin_pipe[1]; // Server writes HTTP request body into this
+	_stdout_fd = stdout_pipe[0]; // Server reads the CGI's response from this
 
 	// Pipes participate in the same poll() loop as sockets, so they
 	// must follow the same rule: non-blocking, FD_CLOEXEC.
@@ -340,8 +341,8 @@ bool	CgiSession::is_finished() const
 int		CgiSession::failure_code() const
 {
 	if (_killed_by_timeout) return 504;
-	// Non-zero exit → 502 Bad Gateway. Zero exit with malformed
-	// output also gets 502 (decided at parse time).
+	// Non-zero exit -> 502 Bad Gateway
+	// Zero exit with malformed output also gets 502 (decided at parse time)
 	return 502;
 }
 

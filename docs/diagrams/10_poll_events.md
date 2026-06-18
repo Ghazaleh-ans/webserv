@@ -73,7 +73,7 @@ sequenceDiagram
     S->>K: read(client_fd) → gets the HTTP request
 ```
 
-**In code:** `Server.cpp` line 181 — `if (revents & POLLIN)` on the client socket,
+**In code:** `Server.cpp` — `if (revents & POLLIN)` on the client socket,
 the server reads the incoming HTTP request.
 
 ### On `_stdout_fd` (CGI → Server)
@@ -90,7 +90,7 @@ sequenceDiagram
     S->>S: appends chunk to _stdout_buf
 ```
 
-**In code:** `CgiSession.cpp` line 408 — `read(_stdout_fd, buf, sizeof(buf))`
+**In code:** `CgiSession.cpp` — `read(_stdout_fd, buf, sizeof(buf))`
 inside `on_readable_stdout()`.
 
 ### Summary table
@@ -120,7 +120,7 @@ sequenceDiagram
     K->>B: TCP delivers the response
 ```
 
-**In code:** `Server.cpp` line 193 — `if (revents & POLLOUT)` on client socket,
+**In code:** `Server.cpp` — `if (revents & POLLOUT)` on client socket,
 server writes from `_out_buffer` to the client.
 
 ### On `_stdin_fd` (Server → CGI)
@@ -136,7 +136,7 @@ sequenceDiagram
     CGI->>K: read(stdin) → gets POST data
 ```
 
-**In code:** `CgiSession.cpp` line 372 — `write(_stdin_fd, ...)` inside
+**In code:** `CgiSession.cpp` — `write(_stdin_fd, ...)` inside
 `on_writable_stdin()`. Keeps firing until all POST body is sent, then
 `_stdin_fd` is closed to signal EOF to the CGI.
 
@@ -182,7 +182,7 @@ sequenceDiagram
     S->>S: close(client_fd), remove client from map
 ```
 
-**In code:** `Server.cpp` line 174 — `if (revents & (POLLHUP | POLLERR | POLLNVAL))`
+**In code:** `Server.cpp` — `if (revents & (POLLHUP | POLLERR | POLLNVAL))`
 on client socket → client is removed.
 
 ### On `_stdout_fd` (CGI exits)
@@ -202,7 +202,7 @@ sequenceDiagram
     S->>S: finalize_cgi() → build response → send to browser
 ```
 
-**In code:** `Server.cpp` line 258 — POLLHUP on `stdout_fd` triggers
+**In code:** `Server.cpp` — POLLHUP on `stdout_fd` triggers
 `on_readable_stdout()` which drains the pipe then sets `_stdout_fd = -1`.
 
 ### On `_stdin_fd` (CGI closed its stdin early)
@@ -219,7 +219,7 @@ sequenceDiagram
     Note over S: stop trying to write POST body
 ```
 
-**In code:** `Server.cpp` line 266 — POLLHUP on `_stdin_fd` → calls
+**In code:** `Server.cpp` — POLLHUP on `_stdin_fd` → calls
 `on_writable_stdin()` which gets `n <= 0` and closes the fd gracefully.
 
 ### Summary table

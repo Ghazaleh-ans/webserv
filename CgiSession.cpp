@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/08 12:47:45 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/15 17:27:56 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/19 11:51:42 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,7 +43,6 @@ std::vector<std::string>	CgiSession::build_env(const HttpRequest& req,
 	std::vector<std::string> env;
 	std::stringstream ss;
 
-	// --- Required meta-variables ---
 	env.push_back("GATEWAY_INTERFACE=CGI/1.1");
 	env.push_back("SERVER_PROTOCOL=HTTP/1.1");
 	env.push_back("SERVER_SOFTWARE=webserv/1.0");
@@ -51,26 +50,23 @@ std::vector<std::string>	CgiSession::build_env(const HttpRequest& req,
 	env.push_back("QUERY_STRING=" + req.query);
 	env.push_back("SCRIPT_FILENAME=" + script_path);
 
-	// SCRIPT_NAME is the URI portion that matched the script. For our
-	// purposes, the location prefix + the file part of the path.
 	env.push_back("SCRIPT_NAME=" + req.path);
 
 	// PATH_INFO: anything in the URI after the script name. We don't
-	// distinguish for now (the project doesn't require it), so it's empty.
+	// distinguish for now -> so it's empty.
 	env.push_back("PATH_INFO=");
 
-	// Server identification.
+	// Server identification
 	env.push_back("SERVER_NAME=" + server.host);
 	ss.str("");
 	ss << server.port;
 	env.push_back("SERVER_PORT=" + ss.str());
 
-	// REMOTE_ADDR / REMOTE_HOST -> we don't track the peer address in
-	// the current Client, so leave empty. Many scripts don't need it
+	// REMOTE_ADDR / REMOTE_HOST -> we don't track the peer address in the current Client
 	env.push_back("REMOTE_ADDR=");
 	env.push_back("REMOTE_HOST=");
 
-	// Content meta-variables for POST.
+	// Content meta-variables for POST
 	if (!req.body.empty())
 	{
 		ss.str("");
@@ -94,7 +90,6 @@ std::vector<std::string>	CgiSession::build_env(const HttpRequest& req,
 	for (std::map<std::string, std::string, CaseInsensitiveLess>::const_iterator
 			it = req.headers.begin(); it != req.headers.end(); ++it)
 	{
-		// Skip headers already represented as their own vars
 		if (it->first == "content-length" || it->first == "content-type")
 			continue;
 		std::string name = "HTTP_";
@@ -133,10 +128,8 @@ std::vector<std::string>	CgiSession::build_env(const HttpRequest& req,
 //   - Close the ends we don't need (stdin_pipe[0], stdout_pipe[1])
 //   - Set our retained ends non-blocking (poll() rule)
 //   - Set retained ends FD_CLOEXEC (so future CGIs don't inherit them)
-CgiSession::CgiSession(const HttpRequest& req,
-					   const std::string& script_path,
-					   const std::string& interpreter,
-					   const ServerConfig& server)
+CgiSession::CgiSession(const HttpRequest& req, const std::string& script_path,
+						const std::string& interpreter, const ServerConfig& server)
 	: _pid(-1),
 	  _stdin_fd(-1),
 	  _stdout_fd(-1),
@@ -149,8 +142,8 @@ CgiSession::CgiSession(const HttpRequest& req,
 	  _killed_by_timeout(false),
 	  _last_active(std::time(NULL))
 {
-	int	stdin_pipe[2];
-	int	stdout_pipe[2];
+	int	stdin_pipe[2]; // server -> CGI child (send request body)
+	int	stdout_pipe[2]; // CGI child -> server (receive CGI's response)
 
 	if (pipe(stdin_pipe) == -1)
 		throw std::runtime_error("CGI: pipe(stdin) failed");
@@ -161,15 +154,9 @@ CgiSession::CgiSession(const HttpRequest& req,
 		throw std::runtime_error("CGI: pipe(stdout) failed");
 	}
 
-	// Build env BEFORE fork -> vectors aren't safe to allocate in the
-	// child's restricted environment (we shouldn't allocate after fork)
 	std::vector<std::string> env_strings =
 		build_env(req, script_path, server);
 
-	// Compute the script's directory and basename for use in the child
-	// After chdir(script_dir), argv[1] must be the bare filename
-	// passing the full original path would be interpreted relative to
-	// the new cwd and produce a "can't open file" error.
 	std::string script_dir;
 	std::string script_name;
 	size_t last_slash = script_path.find_last_of('/');
@@ -197,30 +184,25 @@ CgiSession::CgiSession(const HttpRequest& req,
 	if (pid == 0)
 	{
 		// --- CHILD ---
-		// From here on, ANY error -> _exit(1). We can't throw across fork.
-		// We use _exit (not exit) to skip C++ static destructors which
-		// would try to flush parent's stdio buffers in the child.
+		// From here on, ANY error -> _exit(1)
+		// exit() does three things before terminating that are dangerous in a child process:
+		// Flushes stdio buffers -> the child inherited a copy of the parent's buffered data. Flushing it causes that data to be written twice: once by the child, once later by the parent.
+		// Runs atexit() handlers -> the child inherited the parent's registered cleanup functions. Running them in the child corrupts shared resources (closing file descriptors, database connections, etc.) that the parent still needs.
+		// Runs C++ destructors -> same problem as atexit: destroys objects that belong to the parent's context.
+		// _exit() skips all three and goes straight to the kernel -> the child dies cleanly without touching anything the parent owns.
 
-		// Wire stdin/stdout.
+		// Wire stdin/stdout
 		if (dup2(stdin_pipe[0], STDIN_FILENO) == -1)  _exit(1);
 		if (dup2(stdout_pipe[1], STDOUT_FILENO) == -1) _exit(1);
 
-		// Close pipe fds we don't need in the child.
 		close(stdin_pipe[0]);
 		close(stdin_pipe[1]);
 		close(stdout_pipe[0]);
 		close(stdout_pipe[1]);
 
-		// chdir to script directory — subject requirement.
-		if (chdir(script_dir.c_str()) == -1) { /* non-fatal, continue */ }
+		// chdir to script directory
+		if (chdir(script_dir.c_str()) == -1) { /* non-fatal, continue -> execve is using the absuolute path */ }
 
-		// Build argv: interpreter, script, NULL.
-		// e.g. ["/usr/bin/python3", "/var/www/cgi-bin/script.py", NULL]
-		// If interpreter is empty, the script is executable on its own
-		// (e.g. has a shebang or is a binary). In that case argv[0]
-		// is the script path itself.
-		// argv[0] = interpreter (or script itself), argv[1] = script basename.
-		// We already chdir'd into script_dir, so just the filename is correct.
 		std::vector<char*> argv_vec;
 		if (interpreter.empty())
 		{
@@ -233,34 +215,30 @@ CgiSession::CgiSession(const HttpRequest& req,
 		}
 		argv_vec.push_back(NULL);
 
-		// Build envp from env_strings.
+		// Build envp from env_strings -> C style
 		std::vector<char*> envp;
 		for (size_t i = 0; i < env_strings.size(); ++i)
 			envp.push_back(const_cast<char*>(env_strings[i].c_str()));
 		envp.push_back(NULL);
 
 		// Execute. If execve returns, it failed.
-		const char* program = interpreter.empty()
-			? script_name.c_str()
-			: interpreter.c_str();
+		const char* program = interpreter.empty() ? script_name.c_str() : interpreter.c_str();
 		execve(program, &argv_vec[0], &envp[0]);
 
-		// If we get here, execve failed. Exit so parent reaps us.
-		_exit(127);  // 127 is the conventional "command not found" code
+		// If we get here, execve failed
+		_exit(127);  // command not found code
 	}
 
 	// --- PARENT ---
 	_pid = pid;
 
-	// Close the ends we don't need.
 	close(stdin_pipe[0]);
 	close(stdout_pipe[1]);
 
-	_stdin_fd = stdin_pipe[1];
-	_stdout_fd = stdout_pipe[0];
+	_stdin_fd = stdin_pipe[1]; // Server writes HTTP request body into this
+	_stdout_fd = stdout_pipe[0]; // Server reads the CGI's response from this
 
-	// Pipes participate in the same poll() loop as sockets, so they
-	// must follow the same rule: non-blocking, FD_CLOEXEC.
+	// Pipes participate in the same poll() loop as sockets -> non-blocking, FD_CLOEXEC.
 	try
 	{
 		SocketUtils::set_nonblocking_cloexec(_stdin_fd);
@@ -268,7 +246,7 @@ CgiSession::CgiSession(const HttpRequest& req,
 	}
 	catch (...)
 	{
-		// Couldn't set non-blocking -> kill child, propagate.
+		// Couldn't set non-blocking -> kill child
 		kill(_pid, SIGKILL);
 		waitpid(_pid, NULL, 0);
 		SocketUtils::safe_close(_stdin_fd);
@@ -279,7 +257,7 @@ CgiSession::CgiSession(const HttpRequest& req,
 	}
 
 	// If there's no body to feed, close stdin immediately so the CGI
-	// gets EOF and can start producing output.
+	// gets EOF and can start producing output
 	if (_body_to_write.empty())
 	{
 		close(_stdin_fd);
@@ -290,13 +268,9 @@ CgiSession::CgiSession(const HttpRequest& req,
 
 CgiSession::~CgiSession()
 {
-	// Best-effort cleanup. If the child is still running we kill it —
-	// can't let zombies escape.
 	if (_pid > 0 && !_child_exited)
 	{
 		kill(_pid, SIGKILL);
-		// waitpid blocking is OK here: we just SIGKILLed, the kernel
-		// reaps within microseconds.
 		waitpid(_pid, NULL, 0);
 	}
 	SocketUtils::safe_close(_stdin_fd);
@@ -340,8 +314,8 @@ bool	CgiSession::is_finished() const
 int		CgiSession::failure_code() const
 {
 	if (_killed_by_timeout) return 504;
-	// Non-zero exit → 502 Bad Gateway. Zero exit with malformed
-	// output also gets 502 (decided at parse time).
+	// Non-zero exit -> 502 Bad Gateway
+	// Zero exit with malformed output also gets 502 (decided at parse time)
 	return 502;
 }
 

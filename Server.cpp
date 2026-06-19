@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:29 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/12 14:55:53 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/18 13:29:42 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -199,7 +199,7 @@ void	Server::handle_client_event(int fd, short revents)
 		}
 	}
 
-	// Client may have decided "I'm done after this send" — honour that.
+	// Client may have decided "I'm done after this send"
 	if (c->should_close() && !c->has_data_to_send())
 		drop_client(fd);
 }
@@ -250,25 +250,22 @@ void	Server::handle_cgi_event(int fd, short revents)
 	Client* c = it->second;
 	if (c->cgi() == NULL)
 		return;
-
-	// CGI activity counts as Client activity, so the idle-timeout
-	// sweep doesn't reap a Client just because the user's request
-	// is being processed by a slow script.
 	c->touch();
-
 	CgiSession* cgi = c->cgi();
 	bool ok = true;
-
+	// POLLIN -> the child wrote some output into the pipe, bytes are ready to read
+	// POLLHUP -> the child closes its stdout and(exited or finished writing), pipe is EOF
 	if (fd == cgi->stdout_fd() && (revents & (POLLIN | POLLHUP)))
 	{
 		ok = cgi->on_readable_stdout();
 	}
 	else if (fd == cgi->stdin_fd())
 	{
+		// POLLOUT -> the pipe buffer has space
+		// POLLHUP | POLLERR | POLLNVAL -> the child closed it's stdin early
 		if (revents & (POLLHUP | POLLERR | POLLNVAL))
 		{
-			// Child closed its stdin early (e.g. didn't read body).
-			// on_writable_stdin() will write, get EPIPE (n<=0), close fd.
+			// on_writable_stdin() will write, get EPIPE (n<=0), close fd
 			cgi->on_writable_stdin();
 		}
 		else if (revents & POLLOUT)
@@ -279,7 +276,7 @@ void	Server::handle_cgi_event(int fd, short revents)
 
 	if (!ok)
 	{
-		// Force termination — finalize_cgi in check_cgi_progress will
+		// Force termination ->finalize_cgi in check_cgi_progress will
 		// produce a 502.
 		cgi->kill_child();
 	}

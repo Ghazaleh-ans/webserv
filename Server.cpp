@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:29 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/19 13:42:48 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/19 17:43:09 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -259,8 +259,7 @@ void	Server::handle_cgi_event(int fd, short revents)
 	}
 }
 
-// Walk every running CGI, check_child(), and finalize the ones that
-// are done. Called once per loop iteration, after the event dispatch.
+// Walk every running CGI ->  check_child() -> finalize the ones that are done
 void	Server::check_cgi_progress()
 {
 	std::time_t now = std::time(NULL);
@@ -275,11 +274,7 @@ void	Server::check_cgi_progress()
 		CgiSession* cgi = c->cgi();
 		cgi->check_child();
 
-		// Timeout check: if the CGI has been silent too long, kill it.
-		// kill_child() also closes our pipe fds so is_finished() flips
-		// to true on the same iteration — we finalize below.
-		if (!cgi->is_finished()
-			&& now - cgi->last_active() > CGI_TIMEOUT_SECONDS)
+		if (!cgi->is_finished() && now - cgi->last_active() > CGI_TIMEOUT_SECONDS)
 		{
 			cgi->kill_child();
 		}

@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/15 15:02:49 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/19 18:10:49 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -147,11 +147,6 @@ void	Client::finalize_cgi()
 {
 	if (_cgi == NULL)
 		return;
-	// Refresh idle timer — the CGI just produced (or failed to produce)
-	// a response, which counts as activity from the user's perspective.
-	// Without this, a CGI that took close to CLIENT_TIMEOUT_SECONDS
-	// to run would have the Client reaped by sweep_timeouts BEFORE we
-	// get a chance to send the response.
 	touch();
 	// Killed (timeout, fatal I/O error) -> emit a proper error response,
 	// not whatever partial bytes leaked. Otherwise use the CGI's output

@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/08 12:47:45 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/19 11:51:42 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/19 18:34:55 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,9 +36,10 @@ static const size_t	CGI_READ_CHUNK = 8192;
 //
 // We also forward request headers as HTTP_* variables,
 // which is how the CGI sees things like User-Agent and Cookie
-std::vector<std::string>	CgiSession::build_env(const HttpRequest& req,
-												   const std::string& script_path,
-												   const ServerConfig& server) const
+std::vector<std::string>	CgiSession::build_env(
+		const HttpRequest& req,
+		const std::string& script_path,
+		const ServerConfig& server) const
 {
 	std::vector<std::string> env;
 	std::stringstream ss;
@@ -86,7 +87,7 @@ std::vector<std::string>	CgiSession::build_env(const HttpRequest& req,
 	env.push_back("REDIRECT_STATUS=200");
 
 	// --- HTTP_* — every request header forwarded ---
-	// Convention: "User-Agent: foo" -> HTTP_USER_AGENT=foo, "-" -> "_", uppercase
+	// "User-Agent: foo" -> HTTP_USER_AGENT=foo (uppercased, dashes to underscores)
 	for (std::map<std::string, std::string, CaseInsensitiveLess>::const_iterator
 			it = req.headers.begin(); it != req.headers.end(); ++it)
 	{
@@ -128,8 +129,10 @@ std::vector<std::string>	CgiSession::build_env(const HttpRequest& req,
 //   - Close the ends we don't need (stdin_pipe[0], stdout_pipe[1])
 //   - Set our retained ends non-blocking (poll() rule)
 //   - Set retained ends FD_CLOEXEC (so future CGIs don't inherit them)
-CgiSession::CgiSession(const HttpRequest& req, const std::string& script_path,
-						const std::string& interpreter, const ServerConfig& server)
+CgiSession::CgiSession(const HttpRequest& req,
+					const std::string& script_path,
+					const std::string& interpreter,
+					const ServerConfig& server)
 	: _pid(-1),
 	  _stdin_fd(-1),
 	  _stdout_fd(-1),
@@ -185,11 +188,11 @@ CgiSession::CgiSession(const HttpRequest& req, const std::string& script_path,
 	{
 		// --- CHILD ---
 		// From here on, ANY error -> _exit(1)
-		// exit() does three things before terminating that are dangerous in a child process:
-		// Flushes stdio buffers -> the child inherited a copy of the parent's buffered data. Flushing it causes that data to be written twice: once by the child, once later by the parent.
-		// Runs atexit() handlers -> the child inherited the parent's registered cleanup functions. Running them in the child corrupts shared resources (closing file descriptors, database connections, etc.) that the parent still needs.
-		// Runs C++ destructors -> same problem as atexit: destroys objects that belong to the parent's context.
-		// _exit() skips all three and goes straight to the kernel -> the child dies cleanly without touching anything the parent owns.
+		// exit() is dangerous in a child process because it:
+		// 1. Flushes stdio buffers (parent's buffered data gets written twice)
+		// 2. Runs atexit() handlers (corrupts shared parent resources)
+		// 3. Runs C++ destructors (destroys parent-owned objects)
+		// _exit() skips all three and terminates straight to the kernel
 
 		// Wire stdin/stdout
 		if (dup2(stdin_pipe[0], STDIN_FILENO) == -1)  _exit(1);
@@ -201,7 +204,7 @@ CgiSession::CgiSession(const HttpRequest& req, const std::string& script_path,
 		close(stdout_pipe[1]);
 
 		// chdir to script directory
-		if (chdir(script_dir.c_str()) == -1) { /* non-fatal, continue -> execve is using the absuolute path */ }
+		if (chdir(script_dir.c_str()) == -1) {} // non-fatal: execve uses absolute path
 
 		std::vector<char*> argv_vec;
 		if (interpreter.empty())
@@ -222,7 +225,8 @@ CgiSession::CgiSession(const HttpRequest& req, const std::string& script_path,
 		envp.push_back(NULL);
 
 		// Execute. If execve returns, it failed.
-		const char* program = interpreter.empty() ? script_name.c_str() : interpreter.c_str();
+		const char* program = interpreter.empty()
+			? script_name.c_str() : interpreter.c_str();
 		execve(program, &argv_vec[0], &envp[0]);
 
 		// If we get here, execve failed
@@ -238,7 +242,7 @@ CgiSession::CgiSession(const HttpRequest& req, const std::string& script_path,
 	_stdin_fd = stdin_pipe[1]; // Server writes HTTP request body into this
 	_stdout_fd = stdout_pipe[0]; // Server reads the CGI's response from this
 
-	// Pipes participate in the same poll() loop as sockets -> non-blocking, FD_CLOEXEC.
+	// Non-blocking + FD_CLOEXEC: these pipe fds join the poll() loop.
 	try
 	{
 		SocketUtils::set_nonblocking_cloexec(_stdin_fd);
@@ -299,13 +303,10 @@ bool	CgiSession::wants_read() const
 
 bool	CgiSession::is_finished() const
 {
-	// Normal completion: child exited AND stdout fully drained.
-	// We don't require stdin to be closed — if the child exited before
-	// reading all its input, we're still done (any pending write will
-	// fail with EPIPE and close the fd on the next poll iteration).
+	// Normal completion: child exited AND stdout fully drained
 	if (_child_exited && _stdout_fd < 0)
 		return true;
-	// Timeout/kill case: kill_child() already closed both fds.
+	// Timeout/kill case: kill_child() already closed both fds
 	if (_killed_by_timeout && _stdout_fd < 0)
 		return true;
 	return false;
@@ -314,8 +315,6 @@ bool	CgiSession::is_finished() const
 int		CgiSession::failure_code() const
 {
 	if (_killed_by_timeout) return 504;
-	// Non-zero exit -> 502 Bad Gateway
-	// Zero exit with malformed output also gets 502 (decided at parse time)
 	return 502;
 }
 
@@ -335,24 +334,18 @@ bool	CgiSession::on_writable_stdin()
 	size_t remaining = _body_to_write.size() - _body_write_pos;
 	if (remaining == 0)
 	{
-		// Done feeding. Close stdin so CGI sees EOF.
+		// Done feeding -> close parent's write end of stdin pipe -> child's read() returns 0 (EOF)
 		close(_stdin_fd);
 		_stdin_fd = -1;
 		_stdin_closed = true;
 		return true;
 	}
 
-	ssize_t n = write(_stdin_fd,
-		_body_to_write.data() + _body_write_pos,
-		remaining);
+	ssize_t n = write(_stdin_fd, _body_to_write.data() + _body_write_pos, remaining);
 
-	// Subject rule: no errno after read/write. Negative or zero treated
-	// as fatal for this session.
 	if (n <= 0)
 	{
-		// Child likely closed stdin (refused our body). Not necessarily
-		// fatal — many CGI scripts don't read their stdin at all. Just
-		// stop trying to write; let stdout drain normally.
+		// Child likely closed stdin (refused our body) -> CGI doesn't need the body or it has already taken what it needs
 		close(_stdin_fd);
 		_stdin_fd = -1;
 		_stdin_closed = true;
@@ -364,7 +357,7 @@ bool	CgiSession::on_writable_stdin()
 
 	if (_body_write_pos >= _body_to_write.size())
 	{
-		// All written. Close stdin to signal EOF.
+		// All written -> Close stdin to signal EOF
 		close(_stdin_fd);
 		_stdin_fd = -1;
 		_stdin_closed = true;
@@ -382,14 +375,13 @@ bool	CgiSession::on_readable_stdout()
 
 	if (n == 0)
 	{
-		// EOF: CGI closed its stdout. We're done reading.
+		// EOF: CGI closed its stdout
 		close(_stdout_fd);
 		_stdout_fd = -1;
 		return true;
 	}
 	if (n < 0)
 	{
-		// Fatal — abort.
 		close(_stdout_fd);
 		_stdout_fd = -1;
 		return false;
@@ -409,15 +401,15 @@ void	CgiSession::check_child()
 		return;
 
 	int status = 0;
-	pid_t r = waitpid(_pid, &status, WNOHANG);
+	pid_t r = waitpid(_pid, &status, WNOHANG); //WNOHANG: wait but don't hang(block) -> non-blocking
+	// r == _pid: child has exited
 	if (r == _pid)
 	{
 		_child_exited = true;
 		_child_status = status;
 	}
 	// r == 0: child still running, try again next iteration
-	// r == -1: shouldn't happen for our own child, but treat as exited
-	//          to avoid an infinite loop.
+	// r == -1 error
 	else if (r == -1)
 	{
 		_child_exited = true;
@@ -431,13 +423,8 @@ void	CgiSession::kill_child()
 	{
 		_killed_by_timeout = true;
 		kill(_pid, SIGKILL);
-		// Don't waitpid here; check_child() in the next loop iteration
-		// will reap. We can't block.
+		// Don't waitpid here -> it would block -> check_child() reaps on the next iteration
 	}
-	// Force-close our fds so is_finished() can return true once the
-	// child is reaped, even if we never saw EOF on stdout (the kernel
-	// closes the child's end on SIGKILL but our poll wakeups might
-	// race with this — being explicit is safer).
 	if (_stdin_fd >= 0)
 	{
 		close(_stdin_fd);
@@ -454,7 +441,7 @@ void	CgiSession::kill_child()
 // ============================================================
 // build_response: parse CGI output, build HTTP response
 // ============================================================
-// CGI output format (RFC 3875 §6):
+// CGI output format :
 //   Header-Field: value\r\n  (or \n)
 //   Header-Field: value
 //   \r\n
@@ -465,7 +452,7 @@ void	CgiSession::kill_child()
 // HTTP status code.
 std::string	CgiSession::build_response() const
 {
-	// Find the end of headers — first blank line (\r\n\r\n or \n\n).
+	// Find the end of headers -> first blank line (\r\n\r\n or \n\n).
 	size_t headers_end = _stdout_buf.find("\r\n\r\n");
 	size_t sep_len = 4;
 	if (headers_end == std::string::npos)

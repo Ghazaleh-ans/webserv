@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/08 12:47:45 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/19 18:34:55 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/22 15:10:56 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,8 +31,8 @@ static const size_t	CGI_READ_CHUNK = 8192;
 // ============================================================
 //
 // These are the meta-variables every CGI script expects to find. We
-// pass them as KEY=VALUE strings; the exec setup later converts to
-// char* arrays
+// pass them as KEY=VALUE strings
+// the exec setup later converts to char* arrays
 //
 // We also forward request headers as HTTP_* variables,
 // which is how the CGI sees things like User-Agent and Cookie
@@ -441,23 +441,30 @@ void	CgiSession::kill_child()
 // ============================================================
 // build_response: parse CGI output, build HTTP response
 // ============================================================
-// CGI output format :
-//   Header-Field: value\r\n  (or \n)
-//   Header-Field: value
+// CGI output (_stdout_buf):
+//   Status: 404 Not Found\r\n
+//   Content-Type: text/html\r\n
 //   \r\n
-//   <body bytes>
+//   <html><body>Not Found</body></html>
 //
-// We MUST emit at least Content-Type unless we got one from the CGI.
-// CGI may emit a "Status: 404 Not Found" header which becomes the
-// HTTP status code.
+// HTTP response we emit:
+//   HTTP/1.1 404 Not Found\r\n
+//   Content-Type: text/html\r\n
+//   Content-Length: 36\r\n
+//   Connection: close\r\n
+//   \r\n
+//   <html><body>Not Found</body></html>
+//
+// "Status:" is stripped and becomes the HTTP status line.
+// Content-Type defaults to text/html if the CGI didn't emit one.
 std::string	CgiSession::build_response() const
 {
 	// Find the end of headers -> first blank line (\r\n\r\n or \n\n).
-	size_t headers_end = _stdout_buf.find("\r\n\r\n");
+	size_t headers_end = _stdout_buf.find("\r\n\r\n"); // Windows
 	size_t sep_len = 4;
 	if (headers_end == std::string::npos)
 	{
-		headers_end = _stdout_buf.find("\n\n");
+		headers_end = _stdout_buf.find("\n\n"); // Unix
 		sep_len = 2;
 	}
 
@@ -469,7 +476,6 @@ std::string	CgiSession::build_response() const
 	if (headers_end == std::string::npos)
 	{
 		// No header/body separation: treat the whole thing as body
-		// with a generic content type.
 		body = _stdout_buf;
 	}
 	else
@@ -477,7 +483,6 @@ std::string	CgiSession::build_response() const
 		std::string headers_block = _stdout_buf.substr(0, headers_end);
 		body = _stdout_buf.substr(headers_end + sep_len);
 
-		// Walk header lines.
 		size_t pos = 0;
 		while (pos < headers_block.size())
 		{
@@ -498,11 +503,9 @@ std::string	CgiSession::build_response() const
 				continue;
 			std::string name = line.substr(0, colon);
 			std::string value = line.substr(colon + 1);
-			// Trim leading space from value.
 			while (!value.empty() && (value[0] == ' ' || value[0] == '\t'))
 				value.erase(0, 1);
 
-			// Lowercase name for comparison.
 			std::string lname = name;
 			for (size_t i = 0; i < lname.size(); ++i)
 				if (lname[i] >= 'A' && lname[i] <= 'Z')
@@ -510,7 +513,7 @@ std::string	CgiSession::build_response() const
 
 			if (lname == "status")
 			{
-				// "Status: 404 Not Found" → "HTTP/1.1 404 Not Found"
+				// "Status: 404 Not Found" -> "HTTP/1.1 404 Not Found"
 				status_line = "HTTP/1.1 " + value;
 			}
 			else if (lname == "content-type")

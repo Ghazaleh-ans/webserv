@@ -7,11 +7,10 @@ flowchart TD
     START["Server::run()"] --> LOOP["while !_stop_requested"]
 
     LOOP --> BUILD["build_pollfds()\nListeners: POLLIN\nClients: POLLIN + POLLOUT if data\nCGI pipes: POLLIN/POLLOUT"]
-    BUILD --> POLL["n = poll(fds, timeout=5000)"]
+    BUILD --> POLL["n = poll(fds, timeout=1000ms)"]
 
     POLL --> EINTR{"n < 0?"}
-    EINTR -->|EINTR| LOOP
-    EINTR -->|other error| LOOP
+    EINTR -->|EINTR / error| LOOP
 
     POLL --> TIMEOUT{"n == 0?"}
     TIMEOUT -->|Yes| CGI0["check_cgi_progress()"]
@@ -27,13 +26,15 @@ flowchart TD
     REG --> ITER
 
     TYPE -->|CGI stdin/stdout fd| CGIEV["handle_cgi_event(fd)"]
-    CGIEV --> CGIPOLL{"revents &"}
-    CGIPOLL -->|POLLOUT on stdin| WSTDIN["CgiSession::on_writable_stdin()\nsend request body bytes"]
-    CGIPOLL -->|POLLIN on stdout| RSTDOUT["CgiSession::on_readable_stdout()\nbuffer CGI output"]
-    CGIPOLL -->|POLLHUP/ERR| CLOSEPIPE["close pipe fd\nmark closed"]
-    WSTDIN --> ITER
-    RSTDOUT --> ITER
-    CLOSEPIPE --> ITER
+    CGIEV --> CGIPOLL{"which fd?"}
+    CGIPOLL -->|stdout — POLLIN or POLLHUP| RSTDOUT["CgiSession::on_readable_stdout()\nbuffer CGI output\n(EOF on POLLHUP closes fd)"]
+    CGIPOLL -->|stdin — POLLOUT| WSTDIN["CgiSession::on_writable_stdin()\nsend request body bytes"]
+    CGIPOLL -->|stdin — POLLHUP/ERR| WSTDIN
+    RSTDOUT --> OKCHECK{"ok?"}
+    WSTDIN --> OKCHECK
+    OKCHECK -->|No| KILLBAD["CgiSession::kill_child()"]
+    OKCHECK -->|Yes| ITER
+    KILLBAD --> ITER
 
     TYPE -->|Client fd| CLEV["handle_client_event(fd)"]
     CLEV --> ERR{"POLLHUP\nPOLLERR\nPOLLNVAL?"}
@@ -41,28 +42,33 @@ flowchart TD
     ERR -->|No| RCHECK{"revents & POLLIN?"}
     RCHECK -->|Yes| READ["Client::on_readable()\nrecv() → parser.feed()"]
     RCHECK -->|No| WCHECK
-    READ --> PARSE{"parser state?"}
+    READ --> READOK{"on_readable\nreturned ok?"}
+    READOK -->|No — recv error / EOF| DROP
+    READOK -->|Yes| PARSE{"parser state?"}
     PARSE -->|STATE_DONE| BUILD_RESP["build_response()\n→ Router + ResponseBuilder\nor new CgiSession"]
+    BUILD_RESP --> REGCGI["has_cgi()?\n→ register_cgi_fds(c)"]
+    REGCGI --> WCHECK
     PARSE -->|STATE_ERROR| ERR_RESP["build_error_response(code)"]
     PARSE -->|Parsing| WCHECK
-    BUILD_RESP --> WCHECK
     ERR_RESP --> WCHECK
     WCHECK{"revents & POLLOUT?"}
     WCHECK -->|Yes| WRITE["Client::on_writable()\nsend() from _out_buffer"]
-    WRITE --> EMPTY{"_out_buffer empty\n& _response_built?"}
+    WRITE --> WRITEOK{"on_writable\nreturned ok?"}
+    WRITEOK -->|No — send error| DROP
+    WRITEOK -->|Yes| EMPTY{"_out_buffer empty\n& _response_built?"}
     EMPTY -->|Yes| DROP
     EMPTY -->|No| ITER
     WCHECK -->|No| ITER
 
     DROP --> ITER
-    ITER -->|all fds done| CGIPROG["check_cgi_progress()"]
+    ITER -->|all fds done| CGIPROG["check_cgi_progress()\ncgi->check_child() — waitpid(WNOHANG)"]
     CGIPROG --> CGIDONE{"cgi->is_finished()?"}
-    CGIDONE -->|Yes| FINALIZE["Client::finalize_cgi()\nbuild HTTP response from CGI output"]
-    CGIDONE -->|No| CGITIME{"CGI timeout > 30s?"}
-    CGITIME -->|Yes| KILL["CgiSession::kill_child()\n→ SIGKILL\nbuild 504 error"]
+    CGIDONE -->|Yes| FINALIZE["Client::finalize_cgi()\nbuild HTTP response\n(CGI output, or 504 if killed)"]
+    CGIDONE -->|No| CGITIME{"CGI last active\n> 25s ago?"}
+    CGITIME -->|Yes| KILL["CgiSession::kill_child()\nSIGKILL + close pipes\n_killed_by_timeout = true\n→ is_finished() now true"]
     CGITIME -->|No| SWEEP
+    KILL --> FINALIZE
     FINALIZE --> SWEEP
-    KILL --> SWEEP
     SWEEP["sweep_timeouts()\nclient idle > 30s → drop_client()"]
     SWEEP --> LOOP
 ```

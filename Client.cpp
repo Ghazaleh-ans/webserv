@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/15 15:02:49 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/23 12:39:00 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,7 +20,7 @@
 
 // One recv() reads up to this many bytes per poll event. 8 KiB is the
 // traditional sweet spot: large enough that small requests arrive in
-// one syscall, small enough that we don't hog the loop on a single client.
+// one syscall, small enough that we don't hog the loop on a single client
 static const size_t	RECV_CHUNK = 8192;
 
 Client::Client(int fd, const ServerConfig& config)
@@ -70,8 +70,6 @@ bool	Client::on_readable()
 
 	touch();
 
-	// Feed everything we read into the parser
-	// bytes that don't complete a line stay in its internal buffer
 	if (_response_built)
 		return true;
 
@@ -87,7 +85,7 @@ bool	Client::on_readable()
 		build_response();
 		return true;
 	}
-	// Otherwise: still parsing, wait for more bytes.
+	// Otherwise: still parsing, wait for more bytes
 	return true;
 }
 
@@ -116,8 +114,6 @@ void	Client::build_response()
 
 	if (d.kind == RouteDecision::KIND_CGI)
 	{
-		// CGI is async: leave _out_buffer empty and _response_built false
-		// Server polls the pipe fds and calls finalize_cgi() once done
 		try
 		{
 			_cgi = new CgiSession(req, d.fs_path, d.cgi_interpreter, *_config);
@@ -147,11 +143,6 @@ void	Client::finalize_cgi()
 {
 	if (_cgi == NULL)
 		return;
-	// Refresh idle timer — the CGI just produced (or failed to produce)
-	// a response, which counts as activity from the user's perspective.
-	// Without this, a CGI that took close to CLIENT_TIMEOUT_SECONDS
-	// to run would have the Client reaped by sweep_timeouts BEFORE we
-	// get a chance to send the response.
 	touch();
 	// Killed (timeout, fatal I/O error) -> emit a proper error response,
 	// not whatever partial bytes leaked. Otherwise use the CGI's output

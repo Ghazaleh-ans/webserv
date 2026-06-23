@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/01 17:43:01 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/10 19:17:42 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/23 18:24:14 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,11 +27,6 @@
 ResponseBuilder::ResponseBuilder() {}
 ResponseBuilder::~ResponseBuilder() {}
 
-// ============================================================
-// reason_phrase: status code -> human-readable text
-// ============================================================
-// Just the codes we actually emit. Anything not listed falls back to
-// "Status" so we never break the status-line shape on weird codes
 std::string	ResponseBuilder::reason_phrase(int code) const
 {
 	switch (code)
@@ -60,16 +55,7 @@ std::string	ResponseBuilder::reason_phrase(int code) const
 	}
 }
 
-// ============================================================
-// make_response: assemble status line + headers + body
-// ============================================================
-// Single source of truth for response shape. Every response goes through
-// here, including errors and redirects. extra_headers is appended raw —
-// callers responsible for CRLF termination on each header line they add.
-std::string	ResponseBuilder::make_response(int code,
-										   const std::string& content_type,
-										   const std::string& body,
-										   const std::string& extra_headers) const
+std::string	ResponseBuilder::make_response(int code, const std::string& content_type, const std::string& body, const std::string& extra_headers) const
 {
 	std::stringstream ss;
 	ss << "HTTP/1.1 " << code << " " << reason_phrase(code) << "\r\n"
@@ -82,22 +68,11 @@ std::string	ResponseBuilder::make_response(int code,
 	return ss.str();
 }
 
-// ============================================================
-// path_within_root: defence against directory traversal
-// ============================================================
-// Attackers send paths like /files/../../../etc/passwd hoping we'll
-// concatenate them with the root and open the result. The Router built
-// the fs_path by string concatenation, which is intentional: catching
-// the traversal at FILE OPEN time is more robust than trying to
-// normalise URIs.
-//
-// Strategy: after building fs_path, compute its lexical "canonical"
-// form (resolve "." and ".." textually, without touching the filesystem),
-// then check it still starts with root
+// Resolve . and .. segments purely by string manipulation (no filesystem access)
+// Splits on '/', drops "." segments, pops the previous segment on "..",
+// and preserves leading ".." only for relative paths (absolute paths can't go above /)
 static std::string	lexical_normalize(const std::string& p)
 {
-	// Tokenise on '/'. Drop "." segments. Pop the previous segment on ".."
-	// Preserve the leading "/" (absolute) or not (relative)
 	bool is_abs = (!p.empty() && p[0] == '/');
 
 	std::vector<std::string> parts;
@@ -146,36 +121,24 @@ static std::string	lexical_normalize(const std::string& p)
 	return out;
 }
 
-bool	ResponseBuilder::path_within_root(const std::string& fs_path,
-										   const std::string& root) const
+// Returns true if fs_path stays inside root after resolving . and .. -> blocks path traversal
+bool	ResponseBuilder::path_within_root(const std::string& fs_path, const std::string& root) const
 {
 	if (root.empty())
-		return true;  // no root configured -> can't enforce -> let it through
+		return true; // no root configured -> can't enforce -> let it through
 	std::string norm_path = lexical_normalize(fs_path);
 	std::string norm_root = lexical_normalize(root);
 
-	// Make sure root doesn't have a trailing slash, then check the path
-	// either equals root or starts with root + "/"
-	if (!norm_root.empty() && norm_root[norm_root.size() - 1] == '/'
-		&& norm_root.size() > 1)
+	if (!norm_root.empty() && norm_root[norm_root.size() - 1] == '/' && norm_root.size() > 1)
 		norm_root.resize(norm_root.size() - 1);
-
 	if (norm_path == norm_root)
 		return true;
-	if (norm_path.size() > norm_root.size()
-		&& norm_path.compare(0, norm_root.size(), norm_root) == 0
-		&& norm_path[norm_root.size()] == '/')
+	if (norm_path.size() > norm_root.size() && norm_path.compare(0, norm_root.size(), norm_root) == 0 && norm_path[norm_root.size()] == '/')
 		return true;
 	return false;
 }
 
-// ============================================================
-// read_file: slurp a file into a string
-// ============================================================
-// Disk reads are exempt from the poll() rule (subject IV.1), so we use
-// plain ifstream. Returns false on any failure.
-bool	ResponseBuilder::read_file(const std::string& fs_path,
-								   std::string& out) const
+bool	ResponseBuilder::read_file(const std::string& fs_path, std::string& out) const
 {
 	std::ifstream f(fs_path.c_str(), std::ios::binary);
 	if (!f.is_open())
@@ -187,15 +150,7 @@ bool	ResponseBuilder::read_file(const std::string& fs_path,
 	return true;
 }
 
-// ============================================================
-// list_directory: build an autoindex HTML page
-// ============================================================
-// Lists every entry except "." (we DO show "..") in a simple <ul>.
-// uri_path is used to build relative links so the browser navigates
-// correctly. The HTML is intentionally plain — no CSS — to keep the
-// project self-contained and easy to defend.
-std::string	ResponseBuilder::list_directory(const std::string& fs_path,
-											const std::string& uri_path) const
+std::string	ResponseBuilder::list_directory(const std::string& fs_path, const std::string& uri_path) const
 {
 	DIR* dir = opendir(fs_path.c_str());
 	if (dir == NULL)
@@ -216,8 +171,6 @@ std::string	ResponseBuilder::list_directory(const std::string& fs_path,
 		if (name == "." || name == "..")
 			continue;
 
-		// Determine if it's a directory by stat'ing — d_type isn't
-		// portable enough (some filesystems return DT_UNKNOWN)
 		std::string child_path = fs_path;
 		if (!child_path.empty() && child_path[child_path.size() - 1] != '/')
 			child_path += '/';
@@ -256,20 +209,10 @@ std::string	ResponseBuilder::list_directory(const std::string& fs_path,
 	return html.str();
 }
 
-// ============================================================
-// handle_delete: rm the file at fs_path
-// ============================================================
-// Spec ambiguity: HTTP DELETE doesn't strictly say what to return.
-// Common choices: 204 No Content (success, nothing to say) or 200 with
-// a confirmation page. We use 204 — RFC-compliant, no body needed.
-//
-// We refuse to delete directories (would need recursive logic and the
-// subject doesn't require it).
-std::string	ResponseBuilder::handle_delete(const RouteDecision& d,
-										   const ServerConfig& server) const
+// We refuse to delete directories
+std::string	ResponseBuilder::handle_delete(const RouteDecision& d, const ServerConfig& server) const
 {
-	const std::string& root =
-		d.location ? d.location->root : std::string();
+	const std::string& root = d.location ? d.location->root : std::string();
 
 	if (!path_within_root(d.fs_path, root))
 		return build_error(403, server);
@@ -283,7 +226,7 @@ std::string	ResponseBuilder::handle_delete(const RouteDecision& d,
 	if (std::remove(d.fs_path.c_str()) != 0)
 		return build_error(500, server);
 
-	// 204 means "success, no body" — Content-Length: 0 mandatory
+	// 204 means "success, no body" -> Content-Length: 0 mandatory
 	std::stringstream ss;
 	ss << "HTTP/1.1 204 No Content\r\n"
 		<< "Content-Length: 0\r\n"
@@ -291,22 +234,12 @@ std::string	ResponseBuilder::handle_delete(const RouteDecision& d,
 	return ss.str();
 }
 
-// ============================================================
-// handle_upload: POST to a location with upload_store
-// ============================================================
-// Defers all the work to UploadHandler. On success we return 201 with
-// a tiny JSON-ish body so the client can confirm what got saved. On
-// failure we return the error code the handler decided on, with a
-// short HTML page.
-std::string	ResponseBuilder::handle_upload(const HttpRequest& req,
-										   const RouteDecision& d,
-										   const ServerConfig& server) const
+std::string	ResponseBuilder::handle_upload(const HttpRequest& req, const RouteDecision& d, const ServerConfig& server) const
 {
 	if (d.location == NULL)
 		return build_error(500, server);
 
-	if (d.effective_body_limit >= 0
-		&& req.body.size() > static_cast<size_t>(d.effective_body_limit))
+	if (d.effective_body_limit >= 0 && req.body.size() > static_cast<size_t>(d.effective_body_limit))
 		return build_error(413, server);
 
 	UploadResult result = _upload_handler.handle(req, *d.location);
@@ -327,13 +260,9 @@ std::string	ResponseBuilder::handle_upload(const HttpRequest& req,
 		extra << "/";
 	extra << result.saved_filename << "\r\n";
 
-	return make_response(201, "application/json",
-		body.str(), extra.str());
+	return make_response(201, "application/json", body.str(), extra.str());
 }
 
-// ============================================================
-// build_redirect: turn KIND_REDIRECT into a 3xx response
-// ============================================================
 std::string	ResponseBuilder::build_redirect(const RouteDecision& d) const
 {
 	std::stringstream body;
@@ -345,48 +274,37 @@ std::string	ResponseBuilder::build_redirect(const RouteDecision& d) const
 	std::stringstream extra;
 	extra << "Location: " << d.redirect_url << "\r\n";
 
-	return make_response(d.redirect_code, "text/html; charset=utf-8",
-		body.str(), extra.str());
+	return make_response(d.redirect_code, "text/html; charset=utf-8", body.str(), extra.str());
 }
 
-// ============================================================
-// build_serve: the big one — KIND_SERVE
-// ============================================================
 // Steps:
-//   1. Reject DELETE requests by routing them to handle_delete (above)
+//   1. DELETE requests -> handle_delete
 //   2. Path traversal check (refuse 403 if escaping root)
 //   3. stat() the resolved path
-//      - missing      -> 404
+//      - missing -> 404
 //      - directory:
 //          a. try `<fs_path>/<index_file>` if index is set
 //          b. else if autoindex -> list_directory
 //          c. else -> 403
 //      - regular file -> read it, send with MIME type
-//   4. Anything that fails along the way → use server's custom error
-//      pages from the parser if available, otherwise built-in HTML.
-std::string	ResponseBuilder::build_serve(const HttpRequest& req,
-									 const RouteDecision& d,
-									 const ServerConfig& server) const
+//   4. Anything that fails along the way -> error
+std::string	ResponseBuilder::build_serve(const HttpRequest& req, const RouteDecision& d, const ServerConfig& server) const
 {
-	// DELETE and POST go their own paths
 	if (req.method == "DELETE")
 		return handle_delete(d, server);
-	// POST with upload_store configured -> upload handler.
-	// Without upload_store, a POST to a normal location just falls
-	// through to the GET-like serve path (which usually 404s — that's
-	// fine, the user shouldn't have POSTed to a static-only route).
+	// POST with upload_store configured -> upload handler
+	// Without upload_store, a POST to a normal location just falls through to the GET-like serve path
 	if (req.method == "POST" && d.location != NULL && !d.location->upload_store.empty())
 		return handle_upload(req, d, server);
 
-	const std::string& root =
-		d.location ? d.location->root : std::string();
+	const std::string& root = d.location ? d.location->root : std::string();
 
 	// Traversal protection: if the resolved path escapes the location's
-	// root, it's an attack or a bug. 403
+	// root, it's an attack or a bug -> 403
 	if (!path_within_root(d.fs_path, root))
 		return build_error(403, server);
 
-	// Check if bthe file exist
+	// Check if the file exist
 	struct stat st;
 	if (stat(d.fs_path.c_str(), &st) != 0)
 		return build_error(404, server);
@@ -420,8 +338,7 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req,
 				std::string body;
 				if (!read_file(idx_path, body))
 					return build_error(500, server);
-				return make_response(200, MimeTypes::from_path(idx_path),
-					body, "");
+				return make_response(200, MimeTypes::from_path(idx_path), body, "");
 			}
 		}
 
@@ -452,23 +369,9 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req,
 	return make_response(200, MimeTypes::from_path(d.fs_path), body, "");
 }
 
-// ============================================================
-// build_error: custom error pages with built-in fallback
-// ============================================================
-// If the server has an error_page directive for this code AND the file
-// is actually readable, serve it. Otherwise emit a small built-in
-// HTML page. We don't recurse — if the custom error page itself fails
-// to load, we always emit the built-in (never a "500 from the 404 handler").
-//
-// Important: the error_page path from the parser is treated as
-// relative to the FIRST location's root, because the subject doesn't
-// pin down how to resolve them. Real NGINX has elaborate rules; for the
-// project, "first matching location" is good enough.
-std::string	ResponseBuilder::build_error(int code,
-										  const ServerConfig& server) const
+std::string	ResponseBuilder::build_error(int code, const ServerConfig& server) const
 {
-	std::map<int, std::string>::const_iterator it
-		= server.error_pages.find(code);
+	std::map<int, std::string>::const_iterator it = server.error_pages.find(code);
 
 	if (it != server.error_pages.end() && !server.locations.empty())
 	{
@@ -477,15 +380,13 @@ std::string	ResponseBuilder::build_error(int code,
 		const std::string& root = server.locations[0].root;
 		std::string fs_path = root;
 		const std::string& page = it->second;
-		if (!fs_path.empty() && fs_path[fs_path.size() - 1] == '/'
-			&& !page.empty() && page[0] == '/')
+		if (!fs_path.empty() && fs_path[fs_path.size() - 1] == '/' && !page.empty() && page[0] == '/')
 			fs_path.resize(fs_path.size() - 1);
 		fs_path += page;
 
 		std::string body;
 		if (read_file(fs_path, body))
-			return make_response(code, MimeTypes::from_path(fs_path),
-				body, "");
+			return make_response(code, MimeTypes::from_path(fs_path), body, "");
 		// Custom page failed to load -> fall through to default
 	}
 
@@ -510,12 +411,7 @@ std::string	ResponseBuilder::build_error(int code,
 	return make_response(code, "text/html; charset=utf-8", body.str(), "");
 }
 
-// ============================================================
-// build: top-level dispatch
-// ============================================================
-std::string	ResponseBuilder::build(const HttpRequest& req,
-								   const RouteDecision& d,
-								   const ServerConfig& server) const
+std::string	ResponseBuilder::build(const HttpRequest& req, const RouteDecision& d, const ServerConfig& server) const
 {
 	switch (d.kind)
 	{

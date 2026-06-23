@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/20 11:09:30 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/22 16:23:13 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/23 12:10:53 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,49 +38,28 @@ public:
 	HttpRequestParser();
 	~HttpRequestParser();
 
-	// Reset for parsing a new request on the same connection
 	void	reset();
 
-	// Feed bytes from recv()
-	// Returns the current state after consuming them
 	State	feed(const char* data, size_t len);
 
-	// Public accessors
 	State		state() const;
 	int			status_code() const;
 	const HttpRequest&	request() const;
 	HttpRequest&		request();
 
-	// Configurable limits. Defaults match common server practice.
-	// The Client sets body_max from the matching ServerConfig at runtime.
-	void	set_max_header_size(size_t bytes);   // total bytes of all headers
-	void	set_max_body_size(size_t bytes);     // Content-Length cap
+	void	set_max_body_size(size_t bytes);
 
 private:
 	HttpRequest	_req;
 	State		_state;
 	int			_status_code;
-
-	// Accumulator buffer: bytes fed in but not yet consumed by the
-	// state machine. We append to it on feed(), then the state machine
-	// drains it. This handles the "half a line per recv" case.
 	std::string	_buf;
-
-	// While in STATE_BODY_LENGTH -> how many bytes still to read
 	long	_body_remaining;
-
-	// While in STATE_CHUNK_DATA, how many bytes of the current chunk left.
 	long	_chunk_remaining;
-
-	// Cumulative size of headers parsed so far (for the max_header_size cap).
 	size_t	_headers_size_so_far;
-
-	// Configurable caps.
 	size_t	_max_header_size;
 	size_t	_max_body_size;
 
-	// --- State-machine handlers, each returns true if it made progress
-	//     (and may have transitioned state), false if it needs more data. ---
 	bool	parse_request_line();
 	bool	parse_headers();
 	bool	parse_body_length();
@@ -88,11 +67,10 @@ private:
 	bool	parse_chunk_data();
 	bool	parse_chunk_trailer();
 
-	// Helpers
 	void	fail(int code);
-	bool	extract_line(std::string& out);  // pop one CRLF-terminated line from _buf
-	void	split_uri();                     // split _req.uri into path+query
-	void	decide_post_header_state();      // after blank line, where next?
+	bool	extract_line(std::string& out);
+	void	split_uri();
+	void	decide_post_header_state();
 };
 
 #endif

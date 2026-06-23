@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Upload Test</title>
+	<style>
+		body { font-family: monospace; max-width: 600px; margin: 40px auto; }
+		section { border: 1px solid #ccc; padding: 16px; margin-bottom: 24px; }
+		h2 { margin-top: 0; }
+		input, textarea { display: block; margin: 8px 0; }
+		button { margin-top: 8px; }
+		#result { margin-top: 16px; white-space: pre; background: #f4f4f4; padding: 8px; }
+	</style>
+</head>
+<body>
+	<h1>Upload Test</h1>
+
+	<section>
+		<h2>1. Raw text upload</h2>
+		<p>Sends plain text as the body. No filename provided — server generates one (.txt).</p>
+		<textarea id="textBody" rows="4" cols="50" placeholder="Type some text here..."></textarea>
+		<button onclick="uploadText()">Upload</button>
+	</section>
+
+	<section>
+		<h2>2. File upload via URI</h2>
+		<p>Sends file to /upload/&lt;filename&gt; — server takes the filename from the URI.</p>
+		<input type="file" id="namedFile">
+		<button onclick="uploadNamed()">Upload</button>
+	</section>
+
+	<div id="result">Response will appear here.</div>
+
+	<script>
+		var out = document.getElementById("result");
+
+		function show(status, text) {
+			out.textContent = "HTTP " + status + "\n" + text;
+		}
+
+		function uploadText() {
+			var body = document.getElementById("textBody").value;
+			if (!body) { out.textContent = "No text entered."; return; }
+			var xhr = new XMLHttpRequest();
+			xhr.open("POST", "/upload");
+			xhr.setRequestHeader("Content-Type", "text/plain");
+			xhr.onload = function() { show(xhr.status, xhr.responseText); };
+			xhr.send(body);
+		}
+
+		function uploadNamed() {
+			var file = document.getElementById("namedFile").files[0];
+			if (!file) { out.textContent = "No file selected."; return; }
+			var xhr = new XMLHttpRequest();
+			xhr.open("POST", "/upload/" + file.name);
+			xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+			xhr.onload = function() { show(xhr.status, xhr.responseText); };
+			xhr.send(file);
+		}
+	</script>
+</body>
+</html>

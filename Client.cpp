@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/19 18:10:49 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/23 10:20:55 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,7 +20,7 @@
 
 // One recv() reads up to this many bytes per poll event. 8 KiB is the
 // traditional sweet spot: large enough that small requests arrive in
-// one syscall, small enough that we don't hog the loop on a single client.
+// one syscall, small enough that we don't hog the loop on a single client
 static const size_t	RECV_CHUNK = 8192;
 
 Client::Client(int fd, const ServerConfig& config)
@@ -70,8 +70,6 @@ bool	Client::on_readable()
 
 	touch();
 
-	// Feed everything we read into the parser
-	// bytes that don't complete a line stay in its internal buffer
 	if (_response_built)
 		return true;
 

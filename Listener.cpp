@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:49 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/01 14:28:43 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/23 10:13:38 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,17 +46,15 @@ int	Listener::accept_one()
 	struct sockaddr_in peer;
 	socklen_t peer_len = sizeof(peer);
 
-	int client_fd = accept(_fd,
-		reinterpret_cast<struct sockaddr*>(&peer),
-		&peer_len);
+	int client_fd = accept(_fd, reinterpret_cast<struct sockaddr*>(&peer), &peer_len);
 
 	if (client_fd == -1)
 	{
-		// Subject rule: no errno
+		// no errno
 		return -1;
 	}
 
-	//make the new client nonblocking
+	// make the new client nonblocking
 	try
 	{
 		SocketUtils::set_nonblocking_cloexec(client_fd);

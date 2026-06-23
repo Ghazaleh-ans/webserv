@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/20 13:32:08 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/12 10:51:34 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/23 12:11:47 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,11 +18,11 @@
 // (NGINX) use 8KB -> anything longer almost certainly means an attack or a bug
 static const size_t	MAX_HEADER_LINE = 8192;
 
-// Default header-section cap when the caller doesn't override.
+// Default header-section cap when the caller doesn't override
 static const size_t	DEFAULT_MAX_HEADERS_TOTAL = 16384;
 
-// Default body cap when not set by config.
-static const size_t	DEFAULT_MAX_BODY = 1048576;  // 1 MiB
+// Default body cap when not set by config
+static const size_t	DEFAULT_MAX_BODY = 1048576; // 1 MiB
 
 HttpRequestParser::HttpRequestParser()
 {
@@ -44,20 +44,15 @@ void	HttpRequestParser::reset()
 	_headers_size_so_far = 0;
 }
 
-void	HttpRequestParser::set_max_header_size(size_t bytes)
-{
-	_max_header_size = bytes;
-}
-
 void	HttpRequestParser::set_max_body_size(size_t bytes)
 {
 	_max_body_size = bytes;
 }
 
 HttpRequestParser::State	HttpRequestParser::state() const { return _state; }
-int									HttpRequestParser::status_code() const { return _status_code; }
-const HttpRequest&					HttpRequestParser::request() const { return _req; }
-HttpRequest&						HttpRequestParser::request() { return _req; }
+int							HttpRequestParser::status_code() const { return _status_code; }
+const HttpRequest&			HttpRequestParser::request() const { return _req; }
+HttpRequest&				HttpRequestParser::request() { return _req; }
 
 void	HttpRequestParser::fail(int code)
 {
@@ -129,10 +124,6 @@ void	HttpRequestParser::split_uri()
 	_req.path = percent_decode(_req.path);
 }
 
-// ===========================================================
-// State handlers
-// ===========================================================
-
 // Parse "METHOD SP URI SP HTTP/VERSION CRLF"
 // Line:
 // method URI[Unifrom Resourse Identifier(path + query)] HTTP/VERSION \r\n
@@ -158,12 +149,11 @@ bool	HttpRequestParser::parse_request_line()
 	size_t sp2 = line.find(' ', sp1 + 1);
 	if (sp2 == std::string::npos) { fail(400); return true; }
 
-	_req.method  = line.substr(0, sp1);
-	_req.uri     = line.substr(sp1 + 1, sp2 - sp1 - 1);
+	_req.method = line.substr(0, sp1);
+	_req.uri = line.substr(sp1 + 1, sp2 - sp1 - 1);
 	_req.version = line.substr(sp2 + 1);
 
-	if (_req.method != "GET" && _req.method != "POST"
-		&& _req.method != "DELETE")
+	if (_req.method != "GET" && _req.method != "POST" && _req.method != "DELETE")
 	{
 		fail(501);
 		return true;
@@ -206,7 +196,7 @@ bool	HttpRequestParser::parse_headers()
 			return true;
 		}
 
-		// Empty line marks end of headers.
+		// Empty line marks end of headers
 		if (line.empty())
 		{
 			decide_post_header_state();
@@ -224,8 +214,7 @@ bool	HttpRequestParser::parse_headers()
 		std::string name = line.substr(0, colon);
 		std::string value = line.substr(colon + 1);
 
-		if (!name.empty() && std::isspace(
-				static_cast<unsigned char>(name[name.size() - 1])))
+		if (!name.empty() && std::isspace(static_cast<unsigned char>(name[name.size() - 1])))
 		{
 			fail(400);
 			return true;
@@ -236,21 +225,18 @@ bool	HttpRequestParser::parse_headers()
 			return true;
 		}
 
-		// Trim leading/trailing whitespace from value.
+		// Trim leading/trailing whitespace from value
 		size_t v_start = 0;
-		while (v_start < value.size() && std::isspace(
-				static_cast<unsigned char>(value[v_start])))
+		while (v_start < value.size() && std::isspace(static_cast<unsigned char>(value[v_start])))
 			++v_start;
 		size_t v_end = value.size();
-		while (v_end > v_start && std::isspace(
-				static_cast<unsigned char>(value[v_end - 1])))
+		while (v_end > v_start && std::isspace(static_cast<unsigned char>(value[v_end - 1])))
 			--v_end;
 		value = value.substr(v_start, v_end - v_start);
 
 		// case insensetive
 		for (size_t i = 0; i < name.size(); ++i)
-			name[i] = static_cast<char>(std::tolower(
-				static_cast<unsigned char>(name[i])));
+			name[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(name[i])));
 
 		_req.headers[name] = value;
 	}
@@ -259,9 +245,9 @@ bool	HttpRequestParser::parse_headers()
 
 // Once headers are done, decide whether there's a body and how to read it
 // Three cases:
-//   1. Transfer-Encoding: chunked  → chunked state machine
-//   2. Content-Length: N           → read N bytes
-//   3. Neither                     → no body, request is complete
+//   1. Transfer-Encoding: chunked -> chunked state machine
+//   2. Content-Length: N -> read N bytes
+//   3. Neither -> no body, request is complete
 void	HttpRequestParser::decide_post_header_state()
 {
 	if (_req.version == "HTTP/1.1" && !_req.has_header("host"))
@@ -350,15 +336,15 @@ bool	HttpRequestParser::parse_body_length()
 		_state = STATE_DONE;
 		return true;
 	}
-	return false;  // still need more data
+	return false; // still need more data
 }
 
 	//	POST /upload HTTP/1.1\r\n
 	//	Transfer-Encoding: chunked\r\n
 	//	\r\n
-	//	a; filename=test.txt\r\n     ← chunk size line with extension
-	//	0123456789\r\n               ← 10 bytes of data
-	//	0\r\n                        ← final chunk
+	//	a; filename=test.txt\r\n -> chunk size line with extension
+	//	0123456789\r\n -> 10 bytes of data
+	//	0\r\n -> final chunk
 	//	\r\n
 bool	HttpRequestParser::parse_chunk_size()
 {
@@ -379,8 +365,7 @@ bool	HttpRequestParser::parse_chunk_size()
 		line = line.substr(0, semi);
 
 	// Trim trailing whitespace
-	while (!line.empty() && std::isspace(
-			static_cast<unsigned char>(line[line.size() - 1])))
+	while (!line.empty() && std::isspace(static_cast<unsigned char>(line[line.size() - 1])))
 		line.resize(line.size() - 1);
 
 	if (line.empty())
@@ -435,7 +420,7 @@ bool	HttpRequestParser::parse_chunk_data()
 			return false;  // need more data for this chunk
 	}
 
-	// Chunk-data is followed by CRLF before the next size line.
+	// Chunk-data is followed by CRLF before the next size line
 	if (_buf.size() < 2)
 		return false;
 	if (_buf[0] != '\r' || _buf[1] != '\n')
@@ -461,13 +446,11 @@ bool	HttpRequestParser::parse_chunk_trailer()
 			return true;
 		}
 	}
-	return false;  // need more data
+	return false; // need more data
 }
 
-// ===========================================================
-// Main entry: feed bytes and drive the state machine.
-// ===========================================================
-
+// HTTP arrives in unpredictable chuncks over TCP -> we might get half of a header in 
+// one recv(), the rest in the next -> we need a state machine to keep the current stage
 HttpRequestParser::State	HttpRequestParser::feed(const char* data, size_t len)
 {
 	if (_state == STATE_DONE || _state == STATE_ERROR)

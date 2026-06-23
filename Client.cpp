@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/23 10:20:55 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/23 12:39:00 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -85,7 +85,7 @@ bool	Client::on_readable()
 		build_response();
 		return true;
 	}
-	// Otherwise: still parsing, wait for more bytes.
+	// Otherwise: still parsing, wait for more bytes
 	return true;
 }
 
@@ -114,8 +114,6 @@ void	Client::build_response()
 
 	if (d.kind == RouteDecision::KIND_CGI)
 	{
-		// CGI is async: leave _out_buffer empty and _response_built false
-		// Server polls the pipe fds and calls finalize_cgi() once done
 		try
 		{
 			_cgi = new CgiSession(req, d.fs_path, d.cgi_interpreter, *_config);

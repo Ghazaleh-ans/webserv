@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/21 16:12:29 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/10 19:12:37 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/23 12:54:22 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,10 +20,10 @@ struct RouteDecision
 {
 	enum Kind
 	{
-		KIND_SERVE,      // serve a filesystem path
-		KIND_REDIRECT,   // emit a 3xx with Location header
-		KIND_ERROR,      // emit an error status (e.g. 405, 404, 413)
-		KIND_CGI         // run a CGI script (handled by Client + CgiSession)
+		KIND_SERVE, // serve a filesystem path
+		KIND_REDIRECT, // emit a 3xx with Location header
+		KIND_ERROR, // emit an error status (e.g. 405, 404, 413)
+		KIND_CGI // run a CGI script (handled by Client + CgiSession)
 	};
 
 	Kind		kind;
@@ -53,9 +53,6 @@ struct RouteDecision
 	int			error_code;      // 404, 405, 413, ...
 
 	// --- Shared metadata, useful for any kind ---
-	// Effective body-size cap for this request: location override if set,
-	// otherwise server default. Stored here so the caller doesn't need
-	// to re-derive it
 	long		effective_body_limit;
 
 	// Pointer (non-owning) to the matched location

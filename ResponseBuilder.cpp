@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/01 17:43:01 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/23 16:05:13 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/23 18:24:14 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -150,15 +150,7 @@ bool	ResponseBuilder::read_file(const std::string& fs_path, std::string& out) co
 	return true;
 }
 
-// ============================================================
-// list_directory: build an autoindex HTML page
-// ============================================================
-// Lists every entry except "." (we DO show "..") in a simple <ul>.
-// uri_path is used to build relative links so the browser navigates
-// correctly. The HTML is intentionally plain — no CSS — to keep the
-// project self-contained and easy to defend.
-std::string	ResponseBuilder::list_directory(const std::string& fs_path,
-											const std::string& uri_path) const
+std::string	ResponseBuilder::list_directory(const std::string& fs_path, const std::string& uri_path) const
 {
 	DIR* dir = opendir(fs_path.c_str());
 	if (dir == NULL)
@@ -179,8 +171,6 @@ std::string	ResponseBuilder::list_directory(const std::string& fs_path,
 		if (name == "." || name == "..")
 			continue;
 
-		// Determine if it's a directory by stat'ing — d_type isn't
-		// portable enough (some filesystems return DT_UNKNOWN)
 		std::string child_path = fs_path;
 		if (!child_path.empty() && child_path[child_path.size() - 1] != '/')
 			child_path += '/';
@@ -270,13 +260,9 @@ std::string	ResponseBuilder::handle_upload(const HttpRequest& req, const RouteDe
 		extra << "/";
 	extra << result.saved_filename << "\r\n";
 
-	return make_response(201, "application/json",
-		body.str(), extra.str());
+	return make_response(201, "application/json", body.str(), extra.str());
 }
 
-// ============================================================
-// build_redirect: turn KIND_REDIRECT into a 3xx response
-// ============================================================
 std::string	ResponseBuilder::build_redirect(const RouteDecision& d) const
 {
 	std::stringstream body;
@@ -288,8 +274,7 @@ std::string	ResponseBuilder::build_redirect(const RouteDecision& d) const
 	std::stringstream extra;
 	extra << "Location: " << d.redirect_url << "\r\n";
 
-	return make_response(d.redirect_code, "text/html; charset=utf-8",
-		body.str(), extra.str());
+	return make_response(d.redirect_code, "text/html; charset=utf-8", body.str(), extra.str());
 }
 
 // Steps:
@@ -312,15 +297,14 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req, const RouteDeci
 	if (req.method == "POST" && d.location != NULL && !d.location->upload_store.empty())
 		return handle_upload(req, d, server);
 
-	const std::string& root =
-		d.location ? d.location->root : std::string();
+	const std::string& root = d.location ? d.location->root : std::string();
 
 	// Traversal protection: if the resolved path escapes the location's
-	// root, it's an attack or a bug. 403
+	// root, it's an attack or a bug -> 403
 	if (!path_within_root(d.fs_path, root))
 		return build_error(403, server);
 
-	// Check if bthe file exist
+	// Check if the file exist
 	struct stat st;
 	if (stat(d.fs_path.c_str(), &st) != 0)
 		return build_error(404, server);
@@ -354,8 +338,7 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req, const RouteDeci
 				std::string body;
 				if (!read_file(idx_path, body))
 					return build_error(500, server);
-				return make_response(200, MimeTypes::from_path(idx_path),
-					body, "");
+				return make_response(200, MimeTypes::from_path(idx_path), body, "");
 			}
 		}
 

@@ -37,7 +37,6 @@ SRCS		= main.cpp \
 			  Router.cpp \
 			  ResponseBuilder.cpp \
 			  MimeTypes.cpp \
-			  MultipartParser.cpp \
 			  UploadHandler.cpp \
 			  CgiSession.cpp
 
@@ -60,7 +59,6 @@ HEADERS	= Tokenizer.hpp \
 			  Router.hpp \
 			  ResponseBuilder.hpp \
 			  MimeTypes.hpp \
-			  MultipartParser.hpp \
 			  UploadHandler.hpp \
 			  CgiSession.hpp
 

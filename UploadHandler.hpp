@@ -24,15 +24,9 @@ struct UploadResult
 	std::string	error_message; // human-readable description (any)
 };
 
-// Stateless: handle a POST whose route has upload_store configured
-//
-// Supports two content types:
-//   1. multipart/form-data -> extracts each file part, writes one file per
-//      named file part. Returns 201 on success.
-//   2. anything else -> writes the raw body to a single file. The filename
-//      is taken from the URI's last path segment (if any) or a generated
-//      name. This catches `curl --data-binary @file.bin -X POST` and
-//      similar tooling.
+// Stateless: handle a POST whose route has upload_store configured.
+// Writes the raw body to a single file. Filename comes from X-Filename header,
+// URI tail, or a generated name derived from Content-Type.
 class UploadHandler
 {
 public:
@@ -45,7 +39,7 @@ private:
 	bool	write_file(const std::string& store_dir, const std::string& requested_name, const std::string& data, std::string& used_filename_out) const;
 
 	std::string	sanitise_name(const std::string& name) const;
-	std::string	default_filename() const;
+	std::string	default_filename(const std::string& content_type) const;
 };
 
 #endif

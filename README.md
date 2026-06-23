@@ -111,7 +111,7 @@ graph TD
     router["Router\nlongest-prefix match"]
     rb["ResponseBuilder\nstatic / autoindex / DELETE"]
     cgi["CgiSession\nfork + exec + pipes"]
-    upload["UploadHandler\nmultipart + raw body"]
+    upload["UploadHandler\nraw body upload"]
     cfg["ConfigParser + Tokenizer\nnginx-like config"]
 
     main --> cfg
@@ -308,7 +308,7 @@ graph BT
     L3["L3 — Network\nIP addressing, routing, subnets\n(NetPractice — kernel)"]
     L4["L4 — Transport\nTCP: socket/bind/listen/send/recv\n(kernel implements, webserv USES)"]
     L5["L5 — Session\nClient lifecycle, idle timeout, poll loop\n(webserv BUILDS — partial, no keep-alive)"]
-    L6["L6 — Presentation\nMIME types, chunked decode, multipart\n(webserv BUILDS — partial, no TLS)"]
+    L6["L6 — Presentation\nMIME types, chunked decode\n(webserv BUILDS — partial, no TLS)"]
     L7["L7 — Application\nHTTP parse, route, CGI, file serving\n(webserv BUILDS — full)"]
 
     L1 --> L2 --> L3 --> L4 --> L5 --> L6 --> L7

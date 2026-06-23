@@ -338,7 +338,7 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req, const RouteDeci
 				std::string body;
 				if (!read_file(idx_path, body))
 					return build_error(500, server);
-				return make_response(200, MimeTypes::from_path(idx_path), body, "");
+				return make_response(200, MimeTypes::content_type_for(idx_path), body, "");
 			}
 		}
 
@@ -366,7 +366,7 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req, const RouteDeci
 	if (!read_file(d.fs_path, body))
 		return build_error(500, server);
 
-	return make_response(200, MimeTypes::from_path(d.fs_path), body, "");
+	return make_response(200, MimeTypes::content_type_for(d.fs_path), body, "");
 }
 
 std::string	ResponseBuilder::build_error(int code, const ServerConfig& server) const
@@ -386,7 +386,7 @@ std::string	ResponseBuilder::build_error(int code, const ServerConfig& server) c
 
 		std::string body;
 		if (read_file(fs_path, body))
-			return make_response(code, MimeTypes::from_path(fs_path), body, "");
+			return make_response(code, MimeTypes::content_type_for(fs_path), body, "");
 		// Custom page failed to load -> fall through to default
 	}
 

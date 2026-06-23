@@ -60,10 +60,10 @@ The server is a single-process, event-driven loop with five layers.
 
 ```mermaid
 sequenceDiagram
-    participant C as Client (browser/curl)
+    participant C as "Client (browser/curl)"
     participant L as Listener
-    participant S as Server (poll loop)
-    participant Cl as Client object
+    participant S as "Server (poll loop)"
+    participant Cl as "Client object"
     participant R as Router
     participant RB as ResponseBuilder
     participant CGI as CgiSession
@@ -177,7 +177,7 @@ flowchart TD
     PARSE -->|STATE_ERROR| ERR_RESP["build_error_response(code)"]
     PARSE -->|Parsing| WCHECK
     ERR_RESP --> WCHECK
-    WCHECK{"revents & POLLOUT?"}
+    WCHECK{"revents &amp; POLLOUT?"}
     WCHECK -->|Yes| WRITE["Client::on_writable()\nsend() from _out_buffer"]
     WRITE --> WRITEOK{"on_writable\nreturned ok?"}
     WRITEOK -->|No — send error| DROP
@@ -379,7 +379,7 @@ sequenceDiagram
     participant S as Server poll loop
     participant C as Client
     participant CS as CgiSession
-    participant P as CGI process (python/php)
+    participant P as "CGI process (python/php)"
 
     C->>CS: construct (fork + exec + 2 pipes)
     CS->>P: fork() + execve(interpreter, script)
@@ -441,8 +441,6 @@ sequenceDiagram
 - [RFC 7230 — HTTP/1.1 Message Syntax and Routing](https://datatracker.ietf.org/doc/html/rfc7230) — the authoritative spec for request parsing, chunked encoding, and keep-alive semantics
 - [RFC 3875 — CGI/1.1](https://datatracker.ietf.org/doc/html/rfc3875) — the CGI specification; defines required environment variables and the response format
 - [Beej's Guide to Network Programming](https://beej.us/guide/bgnet/) — the classic hands-on reference for POSIX socket programming in C
-
----
 
 ### AI usage
 

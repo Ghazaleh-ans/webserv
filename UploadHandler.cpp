@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/03 16:57:09 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/05 13:17:50 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/23 16:17:11 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -141,17 +141,12 @@ bool	UploadHandler::write_file(const std::string& store_dir,
 	return false;  // gave up after 1000 collisions
 }
 
-// ============================================================
-// handle: the public entry point
-// ============================================================
 // Decision tree:
-//   - upload_store empty -> 500 (config bug; the router should not have
-//     routed here without it)
+//   - upload_store empty -> 500 (config bug -> the router should not have routed here without it)
 //   - body empty -> 400 (nothing to upload)
 //   - Content-Type starts with "multipart/form-data" -> multipart path
 //   - otherwise -> raw-bytes path, filename from URI tail or default
-UploadResult	UploadHandler::handle(const HttpRequest& req,
-									   const LocationConfig& loc) const
+UploadResult	UploadHandler::handle(const HttpRequest& req, const LocationConfig& loc) const
 {
 	UploadResult result;
 	result.status_code = 500;
@@ -169,9 +164,6 @@ UploadResult	UploadHandler::handle(const HttpRequest& req,
 		return result;
 	}
 
-	// Make sure the upload directory actually exists. We do not create
-	// it on demand -> config-time setup is the admin's job. If it's
-	// missing we'd silently fail on every upload.
 	struct stat st;
 	if (stat(loc.upload_store.c_str(), &st) != 0 || !S_ISDIR(st.st_mode))
 	{
@@ -183,8 +175,7 @@ UploadResult	UploadHandler::handle(const HttpRequest& req,
 	std::string content_type = req.header("content-type");
 
 	// Multipart path
-	if (!content_type.empty()
-		&& content_type.find("multipart/form-data") == 0)
+	if (!content_type.empty() && content_type.find("multipart/form-data") == 0)
 	{
 		std::string boundary = MultipartParser::extract_boundary(content_type);
 		if (boundary.empty())

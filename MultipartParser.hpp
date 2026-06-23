@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/03 16:57:17 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/04 11:45:10 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/23 16:23:09 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,8 +17,6 @@
 # include <vector>
 # include <map>
 
-// One part of a multipart/form-data body
-// There are usually several per request: each form field is its own part
 // A part with a non-empty `filename` -> file upload
 // A part with `filename` empty -> form field
 struct MultipartPart

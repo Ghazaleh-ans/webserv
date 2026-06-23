@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/01 17:43:01 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/23 15:31:39 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/23 16:05:13 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -244,22 +244,12 @@ std::string	ResponseBuilder::handle_delete(const RouteDecision& d, const ServerC
 	return ss.str();
 }
 
-// ============================================================
-// handle_upload: POST to a location with upload_store
-// ============================================================
-// Defers all the work to UploadHandler. On success we return 201 with
-// a tiny JSON-ish body so the client can confirm what got saved. On
-// failure we return the error code the handler decided on, with a
-// short HTML page.
-std::string	ResponseBuilder::handle_upload(const HttpRequest& req,
-										   const RouteDecision& d,
-										   const ServerConfig& server) const
+std::string	ResponseBuilder::handle_upload(const HttpRequest& req, const RouteDecision& d, const ServerConfig& server) const
 {
 	if (d.location == NULL)
 		return build_error(500, server);
 
-	if (d.effective_body_limit >= 0
-		&& req.body.size() > static_cast<size_t>(d.effective_body_limit))
+	if (d.effective_body_limit >= 0 && req.body.size() > static_cast<size_t>(d.effective_body_limit))
 		return build_error(413, server);
 
 	UploadResult result = _upload_handler.handle(req, *d.location);
@@ -317,10 +307,8 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req, const RouteDeci
 {
 	if (req.method == "DELETE")
 		return handle_delete(d, server);
-	// POST with upload_store configured -> upload handler.
-	// Without upload_store, a POST to a normal location just falls
-	// through to the GET-like serve path (which usually 404s — that's
-	// fine, the user shouldn't have POSTed to a static-only route).
+	// POST with upload_store configured -> upload handler
+	// Without upload_store, a POST to a normal location just falls through to the GET-like serve path
 	if (req.method == "POST" && d.location != NULL && !d.location->upload_store.empty())
 		return handle_upload(req, d, server);
 

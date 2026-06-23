@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/19 11:55:39 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/19 11:55:40 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/23 19:13:22 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,11 +15,6 @@
 
 namespace MimeTypes
 {
-
-// Small hand-curated table covering the extensions a project-grade web
-// server actually meets. NGINX has ~80 entries; the full IANA list has
-// thousands. We pick the ones a browser actually sends/receives during
-// normal testing. Unknown -> octet-stream.
 struct Entry
 {
 	const char*	ext;
@@ -60,18 +55,15 @@ static const Entry	g_table[] = {
 	{ NULL, NULL }
 };
 
-// Lowercase a string in place. Helper for case-insensitive extension
-// matching ("README.HTML" should be served as text/html).
 static std::string	to_lower(const std::string& s)
 {
 	std::string out = s;
 	for (size_t i = 0; i < out.size(); ++i)
-		out[i] = static_cast<char>(std::tolower(
-			static_cast<unsigned char>(out[i])));
+		out[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(out[i])));
 	return out;
 }
 
-std::string	from_path(const std::string& path)
+std::string	content_type_for(const std::string& path)
 {
 	// Find the last '.' AFTER the last '/'
 	// Otherwise "/foo.bar/baz" -> would be misread as having extension "bar/baz"
@@ -92,4 +84,4 @@ std::string	from_path(const std::string& path)
 	return "application/octet-stream";
 }
 
-}  // namespace MimeTypes
+}

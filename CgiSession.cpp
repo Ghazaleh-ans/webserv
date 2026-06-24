@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/08 12:47:45 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/22 15:10:56 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/24 15:36:27 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,14 +26,7 @@
 
 static const size_t	CGI_READ_CHUNK = 8192;
 
-// ============================================================
-// build_env: CGI/1.1 environment variables
-// ============================================================
-//
-// These are the meta-variables every CGI script expects to find. We
-// pass them as KEY=VALUE strings
-// the exec setup later converts to char* arrays
-//
+// These are the meta-variables every CGI script expects to find -> KEY=VALUE
 // We also forward request headers as HTTP_* variables,
 // which is how the CGI sees things like User-Agent and Cookie
 std::vector<std::string>	CgiSession::build_env(
@@ -108,9 +101,6 @@ std::vector<std::string>	CgiSession::build_env(
 	return env;
 }
 
-// ============================================================
-// Constructor: fork + exec + pipes
-// ============================================================
 // Two pipes:
 //   stdin_pipe[0]  = read-end  -> goes to child's stdin
 //   stdin_pipe[1]  = write-end -> we keep, used to feed body
@@ -281,10 +271,6 @@ CgiSession::~CgiSession()
 	SocketUtils::safe_close(_stdout_fd);
 }
 
-// ============================================================
-// Accessors and state queries
-// ============================================================
-
 int		CgiSession::stdin_fd() const  { return _stdin_fd; }
 int		CgiSession::stdout_fd() const { return _stdout_fd; }
 pid_t	CgiSession::pid() const       { return _pid; }
@@ -323,9 +309,6 @@ bool	CgiSession::was_killed() const
 	return _killed_by_timeout;
 }
 
-// ============================================================
-// on_writable_stdin: feed request body to CGI
-// ============================================================
 bool	CgiSession::on_writable_stdin()
 {
 	if (_stdin_closed)
@@ -365,9 +348,6 @@ bool	CgiSession::on_writable_stdin()
 	return true;
 }
 
-// ============================================================
-// on_readable_stdout: read CGI output
-// ============================================================
 bool	CgiSession::on_readable_stdout()
 {
 	char buf[CGI_READ_CHUNK];
@@ -392,9 +372,6 @@ bool	CgiSession::on_readable_stdout()
 	return true;
 }
 
-// ============================================================
-// check_child: non-blocking waitpid
-// ============================================================
 void	CgiSession::check_child()
 {
 	if (_child_exited || _pid <= 0)
@@ -438,9 +415,6 @@ void	CgiSession::kill_child()
 	}
 }
 
-// ============================================================
-// build_response: parse CGI output, build HTTP response
-// ============================================================
 // CGI output (_stdout_buf):
 //   Status: 404 Not Found\r\n
 //   Content-Type: text/html\r\n

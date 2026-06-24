@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:29 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/24 12:39:39 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/24 15:23:31 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,9 +49,7 @@ void	Server::start()
 	{
 		Listener* lis = new Listener(_configs[i]);
 		_listeners.push_back(lis);
-		std::cout << "listening on " << _configs[i].host
-			<< ":" << _configs[i].port
-			<< " (fd " << lis->fd() << ")\n";
+		std::cout << "listening on " << _configs[i].host << ":" << _configs[i].port << " (fd " << lis->fd() << ")\n";
 	}
 }
 

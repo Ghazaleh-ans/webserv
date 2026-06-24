@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/19 13:03:46 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/22 10:18:57 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/24 15:24:54 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,7 @@ int	main(int argc, char** argv)
 		return 1;
 	}
 
-	// SIGPIPE: a synchronous signal that's sent to a process 
+	// SIGPIPE: a synchronous signal that's sent to a process
 	// which attempts to write data to a socket or pipe that has been closed by the reading end
 	std::signal(SIGPIPE, SIG_IGN);
 

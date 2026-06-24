@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/23 12:39:00 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/24 15:28:39 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,8 +36,7 @@ Client::Client(int fd, const ServerConfig& config)
 	  _cgi(NULL)
 {
 	if (_config->client_max_body_size > 0)
-		_parser.set_max_body_size(
-			static_cast<size_t>(_config->client_max_body_size));
+		_parser.set_max_body_size(static_cast<size_t>(_config->client_max_body_size));
 }
 
 Client::~Client()

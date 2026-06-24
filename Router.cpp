@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/21 16:12:44 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/23 13:40:10 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/24 15:42:58 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -106,9 +106,6 @@ long	Router::effective_body_limit(const LocationConfig& loc, const ServerConfig&
 	return server.client_max_body_size;
 }
 
-// ============================================================
-// The main entry point
-// ============================================================
 // Order of checks matters:
 //   1. Find a matching location.       (no match -> 404)
 //   2. If location has `return` -> emit redirect immediately,

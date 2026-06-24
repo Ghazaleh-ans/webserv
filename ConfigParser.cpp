@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/12 16:08:40 by gansari           #+#    #+#             */
-/*   Updated: 2026/05/13 16:50:07 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/24 12:44:35 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,17 +21,15 @@
 ConfigParser::ConfigParser() : _tokens(), _pos(0) {}
 ConfigParser::~ConfigParser() {}
 
-// Render a token in error messages. For WORD tokens we show the value;
-// for structural tokens we show their symbol so "got ''" never happens.
 static std::string	tok_display(const Token& t)
 {
 	switch (t.type)
 	{
-		case Token::WORD:   return t.value;
+		case Token::WORD: return t.value;
 		case Token::LBRACE: return "{";
 		case Token::RBRACE: return "}";
-		case Token::SEMI:   return ";";
-		case Token::END:    return "end of file";
+		case Token::SEMI: return ";";
+		case Token::END: return "end of file";
 	}
 	return "";
 }
@@ -44,7 +42,7 @@ std::vector<ServerConfig>	ConfigParser::parse_file(const std::string& path)
 		throw std::runtime_error("cannot open config file: " + path);
 
 	std::stringstream buf;
-	buf << file.rdbuf(); //instead of getline - rdnuf() -> read all the data in a single call
+	buf << file.rdbuf(); //instead of getline - rdbuf() -> read all the data in a single call
 	return parse_string(buf.str());
 }
 
@@ -56,13 +54,12 @@ std::vector<ServerConfig>	ConfigParser::parse_string(const std::string& input)
 
 	std::vector<ServerConfig> servers;
 
-	// Top-level: zero or more `server { ... }` blocks.
+	// Top-level: zero or more `server { ... }` blocks
 	while (!match(Token::END))
 	{
 		if (peek().type != Token::WORD || peek().value != "server")
-			error("expected 'server' block at top level, got '"
-				+ tok_display(peek()) + "'", peek().line);
-		consume();
+			error("expected 'server' block at top level, got '" + tok_display(peek()) + "'", peek().line);
+		consume(); //consume the "server"
 		servers.push_back(parse_server());
 	}
 
@@ -127,8 +124,7 @@ ServerConfig	ConfigParser::parse_server()
 void	ConfigParser::parse_server_directive(ServerConfig& srv)
 {
 	if (!match(Token::WORD))
-		error("expected directive name, got '" + tok_display(peek()) + "'",
-			peek().line);
+		error("expected directive name, got '" + tok_display(peek()) + "'", peek().line);
 
 	const std::string name = consume().value;
 
@@ -139,10 +135,7 @@ void	ConfigParser::parse_server_directive(ServerConfig& srv)
 	else if (name == "server_name")
 		parse_server_name(srv);
 	else if (name == "client_max_body_size")
-	{
 		parse_body_size(srv.client_max_body_size);
-		expect_semi("client_max_body_size");
-	}
 	else if (name == "error_page")
 		parse_error_page(srv);
 	else if (name == "location")
@@ -157,8 +150,7 @@ LocationConfig	ConfigParser::parse_location()
 
 	loc.path = expect_word("location path");
 	if (loc.path.empty() || loc.path[0] != '/')
-		error("location path must start with '/', got '" + loc.path + "'",
-			peek().line);
+		error("location path must start with '/', got '" + loc.path + "'", peek().line);
 
 	expect(Token::LBRACE, "'{' after location path");
 	while (!match(Token::RBRACE) && !match(Token::END))
@@ -171,8 +163,7 @@ LocationConfig	ConfigParser::parse_location()
 void	ConfigParser::parse_location_directive(LocationConfig& loc)
 {
 	if (!match(Token::WORD))
-		error("expected directive name, got '" + tok_display(peek()) + "'",
-			peek().line);
+		error("expected directive name, got '" + tok_display(peek()) + "'", peek().line);
 
 	const std::string name = consume().value;
 
@@ -193,10 +184,7 @@ void	ConfigParser::parse_location_directive(LocationConfig& loc)
 	else if (name == "autoindex")
 		parse_autoindex(loc);
 	else if (name == "client_max_body_size")
-	{
 		parse_body_size(loc.client_max_body_size);
-		expect_semi("client_max_body_size");
-	}
 	else if (name == "upload_store")
 	{
 		loc.upload_store = expect_word("path after 'upload_store'");
@@ -205,16 +193,15 @@ void	ConfigParser::parse_location_directive(LocationConfig& loc)
 	else if (name == "cgi_extension")
 		parse_cgi(loc);
 	else
-		error("unknown directive '" + name + "' in location block",
-			peek().line);
+		error("unknown directive '" + name + "' in location block", peek().line);
 }
 
-// listen 8080;     -> port = 8080
-// listen 0.0.0.0:8080;  -> host = 0.0.0.0, port = 8080
+// listen 8080; -> port = 8080
+// listen 0.0.0.0:8080; -> host = 0.0.0.0, port = 8080
 void	ConfigParser::parse_listen(ServerConfig& srv)
 {
 	const std::string val = expect_word("port or host:port after 'listen'");
-	int line = _tokens[_pos - 1].line;
+	int line = _tokens[_pos - 1].line; // _pos - 1 -> expect_word has called the consume
 
 	std::string host_part;
 	std::string port_part;
@@ -236,7 +223,7 @@ void	ConfigParser::parse_listen(ServerConfig& srv)
 	int port;
 	if (!parse_int(port_part, port))
 		error("invalid port number '" + port_part + "'", line);
-	if (port < 1 || port > 65535) // port number is a 16-bit unsigned integer -> 2^16 - 1 = 65535 [the maximum] {0 is excluded because in case of 0 the Os will choose a random port}
+	if (port < 1 || port > 65535) // port number is a 16-bit unsigned integer -> 2^16 - 1 = 65535 [the maximum] {0 excluded: OS-assigned ports are unpredictable for clients}
 		error("port out of range (1-65535): " + port_part, line);
 	srv.port = port;
 
@@ -269,6 +256,7 @@ void	ConfigParser::parse_body_size(long& target)
 	if (bytes < 0)
 		error("size cannot be negative: " + val, line);
 	target = bytes;
+	expect_semi("client_max_body_size");
 }
 
 void	ConfigParser::parse_error_page(ServerConfig& srv)
@@ -280,8 +268,7 @@ void	ConfigParser::parse_error_page(ServerConfig& srv)
 		words.push_back(consume().value);
 
 	if (words.size() < 2)
-		error("'error_page' needs at least one status code and a path",
-			peek().line);
+		error("'error_page' needs at least one status code and a path", peek().line);
 
 	std::string path = words.back();
 	for (size_t i = 0; i < words.size() - 1; ++i)
@@ -290,8 +277,7 @@ void	ConfigParser::parse_error_page(ServerConfig& srv)
 		if (!parse_int(words[i], code))
 			error("invalid status code '" + words[i] + "'", peek().line);
 		if (code < 300 || code > 599)
-			error("error_page code out of range (300-599): " + words[i],
-				peek().line);
+			error("error_page code out of range (300-599): " + words[i], peek().line);
 		srv.error_pages[code] = path;
 	}
 
@@ -312,9 +298,7 @@ void	ConfigParser::parse_methods(LocationConfig& loc)
 	{
 		std::string m = consume().value;
 		if (allowed.find(m) == allowed.end())
-			error("unsupported method '" + m
-				+ "' (allowed: GET, POST, DELETE)",
-				_tokens[_pos - 1].line);
+			error("unsupported method '" + m + "' (allowed: GET, POST, DELETE)", _tokens[_pos - 1].line);
 		loc.methods.push_back(m);
 	}
 	expect_semi("methods");
@@ -378,11 +362,6 @@ bool	ConfigParser::parse_int(const std::string& s, int& out) const
 {
 	if (s.empty())
 		return false;
-	for (size_t i = 0; i < s.size(); ++i)
-	{
-		if (!std::isdigit(static_cast<unsigned char>(s[i])))
-			return false;
-	}
 
 	char* endptr;
 	long v = std::strtol(s.c_str(), &endptr, 10);
@@ -426,7 +405,7 @@ bool	ConfigParser::parse_size(const std::string& s, long& out) const
 	else
 		return false;
 
-	// overflow check: if v > LONG_MAX / multiplier, multiplying overflows.
+	// overflow check: if v > LONG_MAX / multiplier, multiplying overflows
 	if (multiplier > 1 && v > (LONG_MAX / multiplier))
 		return false;
 
@@ -439,20 +418,14 @@ void	ConfigParser::validate(const std::vector<ServerConfig>& servers)
 	for (size_t i = 0; i < servers.size(); ++i)
 		validate_server(servers[i]);
 
-	// Cross-server check: two servers can't bind the same host:port,
-	// unless we implement virtual hosting (which the subject marks
-	// as out of scope). For now, reject duplicates.
 	for (size_t i = 0; i < servers.size(); ++i)
 	{
 		for (size_t j = i + 1; j < servers.size(); ++j)
 		{
-			if (servers[i].host == servers[j].host
-				&& servers[i].port == servers[j].port)
+			if (servers[i].host == servers[j].host && servers[i].port == servers[j].port)
 			{
 				std::stringstream ss;
-				ss << "duplicate listen " << servers[i].host
-					<< ":" << servers[i].port
-					<< " — two server blocks bind the same address";
+				ss << "duplicate listen " << servers[i].host << ":" << servers[i].port << " — two server blocks bind the same address";
 				throw std::runtime_error(ss.str());
 			}
 		}
@@ -462,35 +435,30 @@ void	ConfigParser::validate(const std::vector<ServerConfig>& servers)
 void	ConfigParser::validate_server(const ServerConfig& srv)
 {
 	if (srv.port == 0)
-		throw std::runtime_error(
-			"server block is missing 'listen' directive");
+		throw std::runtime_error("server block is missing 'listen' directive");
 
 	std::stringstream ctx;
 	ctx << srv.host << ":" << srv.port;
 
-	// Detect duplicate location paths within a server.
+	// Detect duplicate location paths within a server
 	std::set<std::string> paths;
 	for (size_t i = 0; i < srv.locations.size(); ++i)
 	{
 		const std::string& p = srv.locations[i].path;
 		if (paths.find(p) != paths.end())
-			throw std::runtime_error("duplicate location '" + p
-				+ "' in server " + ctx.str());
+			throw std::runtime_error("duplicate location '" + p + "' in server " + ctx.str());
 		paths.insert(p);
 		validate_location(srv.locations[i], ctx.str());
 	}
 }
 
-void	ConfigParser::validate_location(const LocationConfig& loc,
-										 const std::string& server_ctx)
+void	ConfigParser::validate_location(const LocationConfig& loc, const std::string& server_ctx)
 {
-	// A location that isn't a pure redirect needs a root to serve from.
+	// A location that isn't a pure redirect needs a root to serve from
 	if (!loc.has_redirect && loc.root.empty())
-		throw std::runtime_error("location '" + loc.path
-			+ "' in server " + server_ctx
-			+ " has no 'root' and no 'return' — nothing to serve");
+		throw std::runtime_error("location '" + loc.path + "' in server " + server_ctx + " has no 'root' and no 'return' — nothing to serve");
 
-	// If uploads are allowed, the location must accept POST.
+	// If uploads are allowed, the location must accept POST
 	if (!loc.upload_store.empty())
 	{
 		bool has_post = false;
@@ -498,8 +466,6 @@ void	ConfigParser::validate_location(const LocationConfig& loc,
 			if (loc.methods[i] == "POST")
 				has_post = true;
 		if (!has_post)
-			throw std::runtime_error("location '" + loc.path
-				+ "' in server " + server_ctx
-				+ " sets 'upload_store' but doesn't allow POST");
+			throw std::runtime_error("location '" + loc.path + "' in server " + server_ctx + " sets 'upload_store' but doesn't allow POST");
 	}
 }

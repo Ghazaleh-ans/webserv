@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/24 15:28:39 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/25 20:30:59 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -143,11 +143,16 @@ void	Client::finalize_cgi()
 	if (_cgi == NULL)
 		return;
 	touch();
-	// Killed (timeout, fatal I/O error) -> emit a proper error response,
-	// not whatever partial bytes leaked. Otherwise use the CGI's output
 	if (_cgi->was_killed())
 	{
+		// Killed (timeout, fatal I/O error) -> emit a proper error response
 		_out_buffer = _response_builder.build_error(_cgi->failure_code(), *_config);
+	}
+	else if (_cgi->exited_with_error())
+	{
+		// Misconfigured interpreter or a script that crashed/exited non-zero:
+		// don't ship its (often empty) output as a 200 -> emit a 502
+		_out_buffer = _response_builder.build_error(502, *_config);
 	}
 	else
 	{

@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/08 12:47:35 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/19 11:52:50 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/25 20:25:07 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,6 +66,8 @@ public:
 	bool		was_killed() const;
 
 	int		failure_code() const;
+
+	bool		exited_with_error() const;
 
 private:
 	pid_t		_pid;

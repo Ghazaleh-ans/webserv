@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/08 12:47:45 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/24 15:36:27 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/25 20:27:54 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -307,6 +307,21 @@ int		CgiSession::failure_code() const
 bool	CgiSession::was_killed() const
 {
 	return _killed_by_timeout;
+}
+
+bool	CgiSession::exited_with_error() const
+{
+	if (_killed_by_timeout)
+		return false;
+	if (!_child_exited)
+		return false;
+	if (_child_status == -1) // waitpid() itself failed in check_child()
+		return true;
+	if (WIFSIGNALED(_child_status)) // crashed
+		return true;
+	if (WIFEXITED(_child_status) && WEXITSTATUS(_child_status) != 0)
+		return true; // non-zero exit, incl. execve failure (127)
+	return false;
 }
 
 bool	CgiSession::on_writable_stdin()

@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/12 16:08:40 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/24 12:44:35 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/25 18:21:25 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -337,7 +337,10 @@ void	ConfigParser::parse_autoindex(LocationConfig& loc)
 	expect_semi("autoindex");
 }
 
-// cgi_extension .py /usr/bin/python3;
+// cgi_extension .py /usr/bin/python3;   -> run python3 on the script
+// cgi_extension .pl /usr/bin/perl;      -> a *second* CGI type, picked by ext
+// cgi_extension .cgi;                    -> no interpreter: the script runs itself via its shebang line
+// Each extension may be mapped only once per location
 void	ConfigParser::parse_cgi(LocationConfig& loc)
 {
 	const std::string ext = expect_word("extension after 'cgi_extension'");
@@ -346,7 +349,13 @@ void	ConfigParser::parse_cgi(LocationConfig& loc)
 	if (ext.empty() || ext[0] != '.')
 		error("CGI extension must start with '.', got '" + ext + "'", line);
 
-	const std::string interp = expect_word("interpreter path after extension");
+	if (loc.cgi_handlers.find(ext) != loc.cgi_handlers.end())
+		error("duplicate cgi_extension '" + ext + "' in location '" + loc.path + "'", line);
+
+	std::string interp;
+	if (match(Token::WORD))
+		interp = consume().value;
+
 	loc.cgi_handlers[ext] = interp;
 	expect_semi("cgi_extension");
 }

@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/12 16:08:40 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/25 18:21:25 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/26 16:28:34 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -434,7 +434,7 @@ void	ConfigParser::validate(const std::vector<ServerConfig>& servers)
 			if (servers[i].host == servers[j].host && servers[i].port == servers[j].port)
 			{
 				std::stringstream ss;
-				ss << "duplicate listen " << servers[i].host << ":" << servers[i].port << " — two server blocks bind the same address";
+				ss << "duplicate listen " << servers[i].host << ":" << servers[i].port << " - two server blocks bind the same address";
 				throw std::runtime_error(ss.str());
 			}
 		}
@@ -465,7 +465,7 @@ void	ConfigParser::validate_location(const LocationConfig& loc, const std::strin
 {
 	// A location that isn't a pure redirect needs a root to serve from
 	if (!loc.has_redirect && loc.root.empty())
-		throw std::runtime_error("location '" + loc.path + "' in server " + server_ctx + " has no 'root' and no 'return' — nothing to serve");
+		throw std::runtime_error("location '" + loc.path + "' in server " + server_ctx + " has no 'root' and no 'return' - nothing to serve");
 
 	// If uploads are allowed, the location must accept POST
 	if (!loc.upload_store.empty())

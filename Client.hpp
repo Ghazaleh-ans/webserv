@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:02 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/10 19:20:52 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/26 16:28:15 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,7 +50,7 @@ public:
 
 	// Called by Server when poll says this fd is readable.
 	// Returns false if the connection should be closed (peer hung up,
-	// fatal read error). DOES NOT call errno after recv() — the return
+	// fatal read error). DOES NOT call errno after recv() - the return
 	// value (0 == EOF, >0 == bytes, -1 == "would block, try later")
 	// is sufficient.
 	bool					on_readable();

@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/03 16:57:09 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/23 17:39:44 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/26 12:20:04 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,10 +24,10 @@ UploadHandler::UploadHandler() {}
 UploadHandler::~UploadHandler() {}
 
 //   1. Take only what's after the last '/' or '\'
-//   2. Reject null bytes (file system + C-string boundary issue) -> evil.php%00.jpg
+//   2. Strip control characters (NUL, CR, LF, ...) -> they corrupt the on-disk name and, if echoed into the Location: header, enable response splitting
 //   3. Reject empty results
 //   4. Reject names starting with '.' to keep hidden files out
-// Result: a filename safe to concat with the store dir
+// Result: a filename safe to concat with the store dir and put in a header
 std::string	UploadHandler::sanitise_name(const std::string& name) const
 {
 	// Find the last path separator (forward or back slash)
@@ -50,7 +50,8 @@ std::string	UploadHandler::sanitise_name(const std::string& name) const
 	clean.reserve(base.size());
 	for (size_t i = 0; i < base.size(); ++i)
 	{
-		if (base[i] != '\0')
+		unsigned char ch = static_cast<unsigned char>(base[i]);
+		if (ch >= 0x20 && ch != 0x7F)
 			clean += base[i];
 	}
 

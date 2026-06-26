@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/20 13:32:08 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/23 12:11:47 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/26 12:07:44 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -87,11 +87,17 @@ static std::string percent_decode(const std::string& s)
 		{
 			char hex[3] = { s[i + 1], s[i + 2], '\0' };
 			unsigned char c = static_cast<unsigned char>(std::strtol(hex, NULL, 16));
-			// To avoid: /etc/passwd%00.jpg -> /etc/passwd
-			// To avoid: /file%2F../secret -> /file/../sexret
-			// %00 -> 0x00(null byte) -> end of string
-			// %2F -> '/'
-			if (c == 0x00 || c == '/')
+			// Keep these bytes percent-encoded instead of decoding them:
+			//   '/'           - %2F would smuggle a path separator past the traversal check (/file%2F../secret)
+			//   0x00 (NUL)    - truncates C strings (/etc/passwd%00.jpg)
+			//   control chars - 0x00-0x1F (everything below the first printable
+			//                   byte, space 0x20) and 0x7F (DEL). CR/LF (%0D/%0A)
+			//                   matter most: headers are separated by CR/LF, so if
+			//                   a decoded path is later echoed into a header (e.g.
+			//                   Location: on a redirect), an embedded CR/LF ends
+			//                   that header and lets the attacker inject their own
+			//                   headers or body -> HTTP response splitting.
+			if (c == '/' || c < 0x20 || c == 0x7F)
 			{
 				out += '%';
 				out += s[i + 1];

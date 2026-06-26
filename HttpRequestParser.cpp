@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/20 13:32:08 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/26 12:07:44 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/26 13:16:34 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -245,6 +245,14 @@ bool	HttpRequestParser::parse_headers()
 			name[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(name[i])));
 
 		_req.headers[name] = value;
+	}
+
+	// No complete line yet. _buf holds only the current unterminated header
+	// line, so a never-terminating header would grow it forever -> reject before that becomes unbounded memory
+	if (_buf.size() > MAX_HEADER_LINE)
+	{
+		fail(431); // Request Header Fields Too Large
+		return true;
 	}
 	return false; // need more data
 }

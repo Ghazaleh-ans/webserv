@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/08 12:47:45 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/25 20:27:54 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/26 16:28:01 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -79,7 +79,7 @@ std::vector<std::string>	CgiSession::build_env(
 	// to run "for security." Setting it satisfies that check.
 	env.push_back("REDIRECT_STATUS=200");
 
-	// --- HTTP_* — every request header forwarded ---
+	// --- HTTP_* - every request header forwarded ---
 	// "User-Agent: foo" -> HTTP_USER_AGENT=foo (uppercased, dashes to underscores)
 	for (std::map<std::string, std::string, CaseInsensitiveLess>::const_iterator
 			it = req.headers.begin(); it != req.headers.end(); ++it)

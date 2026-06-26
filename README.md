@@ -294,6 +294,8 @@ graph LR
 - Chunked request body decoding works
 - All response headers say `HTTP/1.1` regardless of request version
 - All responses include `Connection: close` — the server behaves like HTTP/1.0 in terms of connection lifecycle
+- Request sizes are bounded: oversized request line/URI → 414, oversized header line or header section → 431, body over `client_max_body_size` → 413 (the per-location limit is honoured even when it raises the server default)
+- Hardened against common attacks: URI path control characters (CR/LF) are kept percent-encoded to prevent HTTP response-splitting, and resolved filesystem paths are confined to the location root on both the static-serve **and** CGI paths (traversal escapes → 403)
 
 ---
 

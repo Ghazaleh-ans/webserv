@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/25 20:30:59 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/26 10:49:09 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,8 +35,24 @@ Client::Client(int fd, const ServerConfig& config)
 	  _response_built(false),
 	  _cgi(NULL)
 {
-	if (_config->client_max_body_size > 0)
-		_parser.set_max_body_size(static_cast<size_t>(_config->client_max_body_size));
+	// The parser enforces a body-size cap *while* it reads bytes, long before
+	// routing has run -> at this point we don't yet know which location the
+	// request targets. A location may *raise* the limit above the server
+	// default, so if we capped the parser at the server limit it would reject
+	// (413) a body that the matched location would actually accept.
+	//
+	// Fix: cap the parser at the largest limit any location in this server
+	// could permit (the server default or any location override, whichever is
+	// bigger). This is a coarse safety bound; the precise per-location limit is
+	// still enforced after routing in ResponseBuilder via effective_body_limit.
+	long max_body = _config->client_max_body_size;
+	for (size_t i = 0; i < _config->locations.size(); ++i)
+	{
+		if (_config->locations[i].client_max_body_size > max_body)
+			max_body = _config->locations[i].client_max_body_size;
+	}
+	if (max_body > 0)
+		_parser.set_max_body_size(static_cast<size_t>(max_body));
 }
 
 Client::~Client()
@@ -110,6 +126,12 @@ void	Client::build_response()
 {
 	const HttpRequest& req = _parser.request();
 	RouteDecision d = _router.route(req, *_config);
+
+	if (d.effective_body_limit >= 0 && req.body.size() > static_cast<size_t>(d.effective_body_limit))
+	{
+		build_error_response(413);
+		return;
+	}
 
 	if (d.kind == RouteDecision::KIND_CGI)
 	{

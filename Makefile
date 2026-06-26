@@ -35,6 +35,7 @@ SRCS		= main.cpp \
 			  HttpRequestParser.cpp \
 			  RouteDecision.cpp \
 			  Router.cpp \
+			  PathUtils.cpp \
 			  ResponseBuilder.cpp \
 			  MimeTypes.cpp \
 			  UploadHandler.cpp \
@@ -57,6 +58,7 @@ HEADERS	= Tokenizer.hpp \
 			  HttpRequestParser.hpp \
 			  RouteDecision.hpp \
 			  Router.hpp \
+			  PathUtils.hpp \
 			  ResponseBuilder.hpp \
 			  MimeTypes.hpp \
 			  UploadHandler.hpp \

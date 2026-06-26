@@ -6,11 +6,12 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/21 16:12:44 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/24 15:42:58 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/26 13:58:03 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Router.hpp"
+#include "PathUtils.hpp"
 #include <sys/stat.h>
 
 Router::Router() {}
@@ -167,6 +168,13 @@ RouteDecision	Router::route(const HttpRequest& req, const ServerConfig& server) 
 			std::map<std::string, std::string>::const_iterator it = loc->cgi_handlers.find(ext);
 			if (it != loc->cgi_handlers.end())
 			{
+				// Traversal protection
+				if (!PathUtils::is_within_root(d.fs_path, loc->root))
+				{
+					d.kind = RouteDecision::KIND_ERROR;
+					d.error_code = 403;
+					return d;
+				}
 				struct stat st;
 				if (stat(d.fs_path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) // check if it exists and is a regular file
 				{

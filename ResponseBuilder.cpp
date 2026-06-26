@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/01 17:43:01 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/23 18:24:14 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/26 10:54:05 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -238,9 +238,6 @@ std::string	ResponseBuilder::handle_upload(const HttpRequest& req, const RouteDe
 {
 	if (d.location == NULL)
 		return build_error(500, server);
-
-	if (d.effective_body_limit >= 0 && req.body.size() > static_cast<size_t>(d.effective_body_limit))
-		return build_error(413, server);
 
 	UploadResult result = _upload_handler.handle(req, *d.location);
 

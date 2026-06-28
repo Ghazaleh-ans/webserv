@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "RouteDecision.hpp"
+#include "http/RouteDecision.hpp"
 
 RouteDecision::RouteDecision()
 	: kind(KIND_ERROR),

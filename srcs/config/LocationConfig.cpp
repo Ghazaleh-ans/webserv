@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "LocationConfig.hpp"
+#include "config/LocationConfig.hpp"
 
 LocationConfig::LocationConfig()
 	: path(""),

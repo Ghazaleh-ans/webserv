@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "ServerConfig.hpp"
+#include "config/ServerConfig.hpp"
 
 ServerConfig::ServerConfig()
 	: host("0.0.0.0"), // bind to all interfaces by default

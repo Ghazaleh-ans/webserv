@@ -14,7 +14,7 @@
 # define ROUTEDECISION_HPP
 
 # include <string>
-# include "LocationConfig.hpp"
+# include "config/LocationConfig.hpp"
 
 struct RouteDecision
 {

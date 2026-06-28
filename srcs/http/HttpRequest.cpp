@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "HttpRequest.hpp"
+#include "http/HttpRequest.hpp"
 #include <cctype>
 
 bool	CaseInsensitiveLess::operator()(const std::string& a,

@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "PathUtils.hpp"
+#include "http/PathUtils.hpp"
 #include <vector>
 
 // Resolve . and .. segments purely by string manipulation (no filesystem access)

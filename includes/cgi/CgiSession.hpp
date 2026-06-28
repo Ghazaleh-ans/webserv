@@ -18,9 +18,9 @@
 # include <sys/types.h>
 # include <ctime>
 
-# include "HttpRequest.hpp"
-# include "LocationConfig.hpp"
-# include "ServerConfig.hpp"
+# include "http/HttpRequest.hpp"
+# include "config/LocationConfig.hpp"
+# include "config/ServerConfig.hpp"
 
 // Lifecycle:
 //   Constructor:  fork + exec, create stdin/stdout pipes

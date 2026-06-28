@@ -10,8 +10,8 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Client.hpp"
-#include "SocketUtils.hpp"
+#include "core/Client.hpp"
+#include "network/SocketUtils.hpp"
 
 #include <sys/socket.h>
 #include <unistd.h>

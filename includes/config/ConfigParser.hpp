@@ -16,9 +16,9 @@
 # include <string>
 # include <vector>
 # include <stdexcept>
-# include "Tokenizer.hpp"
-# include "ServerConfig.hpp"
-# include "LocationConfig.hpp"
+# include "config/Tokenizer.hpp"
+# include "config/ServerConfig.hpp"
+# include "config/LocationConfig.hpp"
 
 class ConfigParser
 {

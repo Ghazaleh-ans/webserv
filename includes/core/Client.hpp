@@ -15,11 +15,11 @@
 
 # include <string>
 # include <ctime>
-# include "ServerConfig.hpp"
-# include "HttpRequestParser.hpp"
-# include "Router.hpp"
-# include "ResponseBuilder.hpp"
-# include "CgiSession.hpp"
+# include "config/ServerConfig.hpp"
+# include "http/HttpRequestParser.hpp"
+# include "http/Router.hpp"
+# include "response/ResponseBuilder.hpp"
+# include "cgi/CgiSession.hpp"
 
 // One Client per active TCP connection. Holds:
 //   - the fd

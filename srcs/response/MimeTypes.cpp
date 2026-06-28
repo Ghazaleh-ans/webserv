@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "MimeTypes.hpp"
+#include "response/MimeTypes.hpp"
 #include <cctype>
 
 namespace MimeTypes

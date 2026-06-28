@@ -10,9 +10,9 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "ResponseBuilder.hpp"
-#include "MimeTypes.hpp"
-#include "PathUtils.hpp"
+#include "response/ResponseBuilder.hpp"
+#include "response/MimeTypes.hpp"
+#include "http/PathUtils.hpp"
 
 #include <sys/stat.h>
 #include <sys/types.h>

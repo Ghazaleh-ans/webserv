@@ -10,8 +10,8 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Listener.hpp"
-#include "SocketUtils.hpp"
+#include "network/Listener.hpp"
+#include "network/SocketUtils.hpp"
 
 #include <sys/socket.h>
 #include <netinet/in.h>

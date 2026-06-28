@@ -10,8 +10,8 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Server.hpp"
-#include "SocketUtils.hpp"
+#include "core/Server.hpp"
+#include "network/SocketUtils.hpp"
 
 #include <iostream>
 #include <ctime>

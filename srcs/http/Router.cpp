@@ -10,8 +10,8 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Router.hpp"
-#include "PathUtils.hpp"
+#include "http/Router.hpp"
+#include "http/PathUtils.hpp"
 #include <sys/stat.h>
 
 Router::Router() {}

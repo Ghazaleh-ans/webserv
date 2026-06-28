@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "UploadHandler.hpp"
+#include "upload/UploadHandler.hpp"
 
 #include <sys/stat.h>
 #include <sys/types.h>

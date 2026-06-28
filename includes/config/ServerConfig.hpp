@@ -16,7 +16,7 @@
 # include <string>
 # include <vector>
 # include <map>
-# include "LocationConfig.hpp"
+# include "config/LocationConfig.hpp"
 
 class ServerConfig
 {

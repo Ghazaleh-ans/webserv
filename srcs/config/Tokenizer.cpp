@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Tokenizer.hpp"
+#include "config/Tokenizer.hpp"
 #include <stdexcept>
 #include <sstream>
 #include <cctype>

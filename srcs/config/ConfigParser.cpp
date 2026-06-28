@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "ConfigParser.hpp"
+#include "config/ConfigParser.hpp"
 #include <fstream>
 #include <sstream>
 #include <cstdlib>

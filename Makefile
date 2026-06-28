@@ -47,7 +47,7 @@ OBJ_DIR		= obj
 OBJS		= $(addprefix $(OBJ_DIR)/, $(SRCS:.cpp=.o))
 
 # Headers
-HEADERS		= $(wildcard $(INC_DIR)/*.hpp)
+HEADERS		= $(shell find $(INC_DIR) -name '*.hpp')
 
 all: $(NAME)
 

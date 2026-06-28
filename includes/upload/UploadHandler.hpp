@@ -14,8 +14,8 @@
 # define UPLOADHANDLER_HPP
 
 # include <string>
-# include "HttpRequest.hpp"
-# include "LocationConfig.hpp"
+# include "http/HttpRequest.hpp"
+# include "config/LocationConfig.hpp"
 
 struct UploadResult
 {

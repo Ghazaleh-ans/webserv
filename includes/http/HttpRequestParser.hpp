@@ -14,7 +14,7 @@
 # define HTTPREQUESTPARSER_HPP
 
 # include <string>
-# include "HttpRequest.hpp"
+# include "http/HttpRequest.hpp"
 
 // Incremental HTTP/1.1 request parser
 // The Client feeds it bytes as they arrive from recv()

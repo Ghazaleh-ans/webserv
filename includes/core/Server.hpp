@@ -16,9 +16,9 @@
 # include <vector>
 # include <map>
 # include <poll.h>
-# include "ServerConfig.hpp"
-# include "Listener.hpp"
-# include "Client.hpp"
+# include "config/ServerConfig.hpp"
+# include "network/Listener.hpp"
+# include "core/Client.hpp"
 
 class Server
 {

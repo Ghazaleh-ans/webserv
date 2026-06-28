@@ -13,7 +13,7 @@
 #ifndef LISTENER_HPP
 # define LISTENER_HPP
 
-# include "ServerConfig.hpp"
+# include "config/ServerConfig.hpp"
 
 class Listener
 {

@@ -6,14 +6,14 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/19 13:03:46 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/24 15:24:54 by gansari          ###   ########.fr       */
+/*   Updated: 2026/06/28 13:52:34 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <iostream>
 #include <csignal>
-#include "ConfigParser.hpp"
-#include "Server.hpp"
+#include "config/ConfigParser.hpp"
+#include "core/Server.hpp"
 
 static void	handle_signal(int /*sig*/)
 {

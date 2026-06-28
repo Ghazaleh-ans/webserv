@@ -10,8 +10,8 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "CgiSession.hpp"
-#include "SocketUtils.hpp"
+#include "cgi/CgiSession.hpp"
+#include "network/SocketUtils.hpp"
 
 #include <unistd.h>
 #include <fcntl.h>

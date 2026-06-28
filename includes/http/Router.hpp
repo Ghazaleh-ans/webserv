@@ -13,9 +13,9 @@
 #ifndef ROUTER_HPP
 # define ROUTER_HPP
 
-# include "ServerConfig.hpp"
-# include "HttpRequest.hpp"
-# include "RouteDecision.hpp"
+# include "config/ServerConfig.hpp"
+# include "http/HttpRequest.hpp"
+# include "http/RouteDecision.hpp"
 
 class Router
 {

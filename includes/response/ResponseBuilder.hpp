@@ -14,10 +14,10 @@
 # define RESPONSEBUILDER_HPP
 
 # include <string>
-# include "HttpRequest.hpp"
-# include "ServerConfig.hpp"
-# include "RouteDecision.hpp"
-# include "UploadHandler.hpp"
+# include "http/HttpRequest.hpp"
+# include "config/ServerConfig.hpp"
+# include "http/RouteDecision.hpp"
+# include "upload/UploadHandler.hpp"
 
 class ResponseBuilder
 {

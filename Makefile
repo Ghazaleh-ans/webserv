@@ -18,51 +18,36 @@ FCLEAN	= 🧼
 # Compiler
 NAME		= webserv
 CXX			= c++
-CXXFLAGS	= -Wall -Wextra -Werror -std=c++98 -I.
+INC_DIR		= includes
+CXXFLAGS	= -Wall -Wextra -Werror -std=c++98 -I$(INC_DIR)
 
 # Sources
-SRC_DIR		= .
+SRC_DIR		= srcs
 SRCS		= main.cpp \
-			  Tokenizer.cpp \
-			  ConfigParser.cpp \
-			  ServerConfig.cpp \
-			  LocationConfig.cpp \
-			  Server.cpp \
-			  SocketUtils.cpp \
-			  Client.cpp \
-			  Listener.cpp \
-			  HttpRequest.cpp \
-			  HttpRequestParser.cpp \
-			  RouteDecision.cpp \
-			  Router.cpp \
-			  PathUtils.cpp \
-			  ResponseBuilder.cpp \
-			  MimeTypes.cpp \
-			  UploadHandler.cpp \
-			  CgiSession.cpp
+			  config/Tokenizer.cpp \
+			  config/ConfigParser.cpp \
+			  config/ServerConfig.cpp \
+			  config/LocationConfig.cpp \
+			  network/SocketUtils.cpp \
+			  network/Listener.cpp \
+			  core/Server.cpp \
+			  core/Client.cpp \
+			  http/HttpRequest.cpp \
+			  http/HttpRequestParser.cpp \
+			  http/RouteDecision.cpp \
+			  http/Router.cpp \
+			  http/PathUtils.cpp \
+			  response/ResponseBuilder.cpp \
+			  response/MimeTypes.cpp \
+			  upload/UploadHandler.cpp \
+			  cgi/CgiSession.cpp
 
 # Objects
 OBJ_DIR		= obj
 OBJS		= $(addprefix $(OBJ_DIR)/, $(SRCS:.cpp=.o))
 
-#Headers
-HEADERS	= Tokenizer.hpp \
-			  ConfigParser.hpp \
-			  ServerConfig.hpp \
-			  LocationConfig.hpp \
-			  Server.hpp \
-			  SocketUtils.hpp \
-			  Client.hpp \
-			  Listener.hpp \
-			  HttpRequest.hpp \
-			  HttpRequestParser.hpp \
-			  RouteDecision.hpp \
-			  Router.hpp \
-			  PathUtils.hpp \
-			  ResponseBuilder.hpp \
-			  MimeTypes.hpp \
-			  UploadHandler.hpp \
-			  CgiSession.hpp
+# Headers
+HEADERS		= $(shell find $(INC_DIR) -name '*.hpp')
 
 all: $(NAME)
 
@@ -72,7 +57,7 @@ $(NAME): $(OBJS)
 	@echo $(SUCCESS) $(GREEN) "Compiling $(NAME) FINISHED" $(RESET)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(HEADERS)
-	@mkdir -p $(OBJ_DIR)
+	@mkdir -p $(dir $@)
 	@$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:

@@ -1,0 +1,87 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   MimeTypes.cpp                                      :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/06/19 11:55:39 by gansari           #+#    #+#             */
+/*   Updated: 2026/06/23 19:13:22 by gansari          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "response/MimeTypes.hpp"
+#include <cctype>
+
+namespace MimeTypes
+{
+struct Entry
+{
+	const char*	ext;
+	const char*	type;
+};
+
+static const Entry	g_table[] = {
+	{ "html", "text/html; charset=utf-8" },
+	{ "htm",  "text/html; charset=utf-8" },
+	{ "css",  "text/css" },
+	{ "js",   "application/javascript" },
+	{ "json", "application/json" },
+	{ "xml",  "application/xml" },
+	{ "txt",  "text/plain; charset=utf-8" },
+	{ "md",   "text/plain; charset=utf-8" },
+
+	{ "png",  "image/png" },
+	{ "jpg",  "image/jpeg" },
+	{ "jpeg", "image/jpeg" },
+	{ "gif",  "image/gif" },
+	{ "svg",  "image/svg+xml" },
+	{ "ico",  "image/x-icon" },
+	{ "webp", "image/webp" },
+
+	{ "pdf",  "application/pdf" },
+	{ "zip",  "application/zip" },
+	{ "gz",   "application/gzip" },
+	{ "tar",  "application/x-tar" },
+
+	{ "mp3",  "audio/mpeg" },
+	{ "mp4",  "video/mp4" },
+	{ "wav",  "audio/wav" },
+
+	{ "woff", "font/woff" },
+	{ "woff2","font/woff2" },
+	{ "ttf",  "font/ttf" },
+
+	{ NULL, NULL }
+};
+
+static std::string	to_lower(const std::string& s)
+{
+	std::string out = s;
+	for (size_t i = 0; i < out.size(); ++i)
+		out[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(out[i])));
+	return out;
+}
+
+std::string	content_type_for(const std::string& path)
+{
+	// Find the last '.' AFTER the last '/'
+	// Otherwise "/foo.bar/baz" -> would be misread as having extension "bar/baz"
+	size_t slash = path.find_last_of('/');
+	size_t dot = path.find_last_of('.');
+	if (dot == std::string::npos)
+		return "application/octet-stream";
+	if (slash != std::string::npos && dot < slash)
+		return "application/octet-stream";
+
+	std::string ext = to_lower(path.substr(dot + 1));
+
+	for (size_t i = 0; g_table[i].ext != NULL; ++i)
+	{
+		if (ext == g_table[i].ext)
+			return g_table[i].type;
+	}
+	return "application/octet-stream";
+}
+
+}

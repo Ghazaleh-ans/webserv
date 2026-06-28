@@ -1,4 +1,4 @@
-*This project has been created as part of the 42 curriculum by gansari and aelsetih (Ghazaleh Ansari and Ahmed Elsetiha).*
+*This project has been created as part of the 42 curriculum by gansari, aelsetih, and mukibrok(Ghazaleh Ansari, Ahmed Elsetiha, and Mukhammad Ibrokhimov).*
 
 # webserv
 

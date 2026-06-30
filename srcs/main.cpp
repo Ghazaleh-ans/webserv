@@ -12,7 +12,7 @@
 
 #include <iostream>
 #include <csignal>
-#include "config/ConfigParser.hpp"
+#include "config/ConfigAdapter.hpp"
 #include "core/Server.hpp"
 
 static void	handle_signal(int /*sig*/)
@@ -38,8 +38,7 @@ int	main(int argc, char** argv)
 
 	try
 	{
-		ConfigParser parser;
-		std::vector<ServerConfig> configs = parser.parse_file(argv[1]);
+		std::vector<ServerConfig> configs = ConfigAdapter::load(argv[1]);
 
 		Server server(configs);
 		server.start();

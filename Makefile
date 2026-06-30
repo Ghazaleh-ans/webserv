@@ -24,8 +24,11 @@ CXXFLAGS	= -Wall -Wextra -Werror -std=c++98 -I$(INC_DIR)
 # Sources
 SRC_DIR		= srcs
 SRCS		= main.cpp \
-			  config/Tokenizer.cpp \
-			  config/ConfigParser.cpp \
+			  extcfg/lexer.cpp \
+			  extcfg/parser.cpp \
+			  extcfg/config.cpp \
+			  extcfg/exceptions.cpp \
+			  config/ConfigAdapter.cpp \
 			  config/ServerConfig.cpp \
 			  config/LocationConfig.cpp \
 			  network/SocketUtils.cpp \

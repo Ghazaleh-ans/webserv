@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/01 17:43:01 by gansari           #+#    #+#             */
-/*   Updated: 2026/07/01 13:25:38 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 16:31:29 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -233,12 +233,9 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req, const RouteDeci
 
 	const std::string& root = d.location ? d.location->root : std::string();
 
-	// Traversal protection: if the resolved path escapes the location's
-	// root, it's an attack or a bug -> 403
 	if (!path_within_root(d.fs_path, root))
 		return build_error(403, server);
 
-	// Check if the file exist
 	struct stat st;
 	if (stat(d.fs_path.c_str(), &st) != 0)
 		return build_error(404, server);
@@ -246,9 +243,7 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req, const RouteDeci
 	// Directory case
 	if (S_ISDIR(st.st_mode))
 	{
-		// Browser convention: GET /foo (a directory) should redirect to
-		// /foo/ so relative links resolve correctly
-		// We do it only when the URI doesn't already end in '/'
+		// Browser convention: GET /foo -> redirect -> /foo/ so relative links resolve correctly
 		if (!req.path.empty() && req.path[req.path.size() - 1] != '/')
 		{
 			RouteDecision fake = d;
@@ -285,7 +280,7 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req, const RouteDeci
 			return make_response(200, "text/html; charset=utf-8", body, "");
 		}
 
-		// Directory access without index and without autoindex -> 403.
+		// Directory access without index and without autoindex -> 403
 		return build_error(403, server);
 	}
 

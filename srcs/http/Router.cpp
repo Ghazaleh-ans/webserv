@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/21 16:12:44 by gansari           #+#    #+#             */
-/*   Updated: 2026/07/01 13:59:44 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 15:09:16 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,7 +44,6 @@ const LocationConfig*	Router::match_location(const std::string& uri_path, const 
 		{
 			// "/foo" must be followed by '/' in "/foo/bar"
 			// but "/foobar" must NOT match "/foo" -> check the char right after the prefix
-			// Exception: if p ends with '/', the boundary is already inside p
 			if (!p.empty() && p[p.size() - 1] != '/' && uri_path[p.size()] != '/')
 				continue;
 		}
@@ -147,11 +146,8 @@ RouteDecision	Router::route(const HttpRequest& req, const ServerConfig& server) 
 		return d;
 	}
 
-	// At this point we know we want to serve something
 	d.kind = RouteDecision::KIND_SERVE;
 	d.fs_path = build_fs_path(req.path, *loc);
-	// /images/cat.jpg -> file request
-	// /images/ -> directory request(trailing slash)
 	d.is_directory_request = !req.path.empty() && req.path[req.path.size() - 1] == '/';
 	d.index_file = loc->index;
 	d.autoindex = loc->autoindex;
@@ -162,7 +158,7 @@ RouteDecision	Router::route(const HttpRequest& req, const ServerConfig& server) 
 	{
 		size_t dot = d.fs_path.find_last_of('.');
 		size_t slash = d.fs_path.find_last_of('/');
-		if (dot != std::string::npos && (slash == std::string::npos || dot > slash)) // make sure doc is not in the directory name
+		if (dot != std::string::npos && (slash == std::string::npos || dot > slash)) // make sure dot is not in the directory name
 		{
 			std::string ext = d.fs_path.substr(dot);  //".py", ".php", ...
 			std::map<std::string, std::string>::const_iterator it = loc->cgi_handlers.find(ext);

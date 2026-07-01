@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/03 16:57:09 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/26 12:20:04 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 17:34:30 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,7 +44,7 @@ std::string	UploadHandler::sanitise_name(const std::string& name) const
 	else if (last_sep + 1 < name.size())
 		base = name.substr(last_sep + 1);
 	else
-		base = ""; // name ended with separator
+		base = ""; // separator is the last char
 
 	std::string clean;
 	clean.reserve(base.size());
@@ -56,20 +56,14 @@ std::string	UploadHandler::sanitise_name(const std::string& name) const
 	}
 
 	if (clean.empty() || clean[0] == '.')
-		return default_filename("");
+		return default_filename();
 	return clean;
 }
 
-std::string	UploadHandler::default_filename(const std::string& content_type) const
+std::string	UploadHandler::default_filename() const
 {
-	std::string ext = ".bin";
-	if (content_type.find("text/") == 0 || content_type.find("application/x-www-form-urlencoded") == 0)
-		ext = ".txt";
-	else if (content_type.find("application/json") == 0)
-		ext = ".json";
-
 	std::stringstream ss;
-	ss << "upload_" << std::time(NULL) << ext;
+	ss << "upload_" << std::time(NULL) << ".bin";
 	return ss.str();
 }
 
@@ -124,7 +118,7 @@ bool	UploadHandler::write_file(const std::string& store_dir, const std::string& 
 // Filename priority:
 //   1. X-Filename header (e.g. curl -H "X-Filename: report.pdf")
 //   2. URI tail (e.g. POST /upload/report.pdf)
-//   3. Generated name based on Content-Type (upload_<timestamp>.txt/.json/.bin)
+//   3. Generated name (upload_<timestamp>.bin)
 UploadResult	UploadHandler::handle(const HttpRequest& req, const LocationConfig& loc) const
 {
 	UploadResult result;
@@ -151,8 +145,6 @@ UploadResult	UploadHandler::handle(const HttpRequest& req, const LocationConfig&
 		return result;
 	}
 
-	std::string content_type = req.header("content-type");
-
 	std::string desired_name = req.header("x-filename");
 	if (desired_name.empty())
 	{
@@ -161,7 +153,7 @@ UploadResult	UploadHandler::handle(const HttpRequest& req, const LocationConfig&
 			desired_name = req.path.substr(slash + 1);
 	}
 	if (desired_name.empty())
-		desired_name = default_filename(content_type);
+		desired_name = default_filename();
 
 	std::string used;
 	if (!write_file(loc.upload_store, desired_name, req.body, used))

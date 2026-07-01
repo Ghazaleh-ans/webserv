@@ -274,12 +274,12 @@ pid_t	CgiSession::pid() const       { return _pid; }
 std::time_t	CgiSession::last_active() const { return _last_active; }
 void	CgiSession::touch() { _last_active = std::time(NULL); }
 
-bool	CgiSession::wants_write() const
+bool	CgiSession::wants_stdin_write() const
 {
 	return !_stdin_closed && _body_write_pos < _body_to_write.size();
 }
 
-bool	CgiSession::wants_read() const
+bool	CgiSession::wants_stdout_read() const
 {
 	return _stdout_fd >= 0;
 }

@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:29 by gansari           #+#    #+#             */
-/*   Updated: 2026/07/01 10:09:10 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 11:05:58 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -80,8 +80,7 @@ void	Server::build_pollfds()
 		_pfds.push_back(pfd);
 	}
 
-	for (std::map<int, Client*>::iterator it = _clients.begin();
-		it != _clients.end(); ++it)
+	for (std::map<int, Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
 	{
 		struct pollfd pfd;
 		pfd.fd = it->first;
@@ -94,8 +93,7 @@ void	Server::build_pollfds()
 		_pfds.push_back(pfd);
 	}
 
-	for (std::map<int, Client*>::iterator it = _cgi_fd_to_client.begin();
-		it != _cgi_fd_to_client.end(); ++it)
+	for (std::map<int, Client*>::iterator it = _cgi_fd_to_client.begin(); it != _cgi_fd_to_client.end(); ++it)
 	{
 		Client* c = it->second;
 		if (c->cgi() == NULL)
@@ -104,9 +102,9 @@ void	Server::build_pollfds()
 		pfd.fd = it->first;
 		pfd.events = 0;
 		pfd.revents = 0;
-		if (it->first == c->cgi()->stdin_fd() && c->cgi()->wants_write())
+		if (it->first == c->cgi()->stdin_fd() && c->cgi()->wants_stdin_write())
 			pfd.events |= POLLOUT;
-		else if (it->first == c->cgi()->stdout_fd() && c->cgi()->wants_read())
+		else if (it->first == c->cgi()->stdout_fd() && c->cgi()->wants_stdout_read())
 			pfd.events |= POLLIN;
 		if (pfd.events != 0)
 			_pfds.push_back(pfd);

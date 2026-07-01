@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:29 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/24 15:23:31 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 10:09:10 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -131,12 +131,6 @@ void	Server::handle_client_event(int fd, short revents)
 	Client* c = it->second;
 
 	// POLLHUP/POLLERR/POLLNVAL mean the connection is gone or broken
-	// POLLIN  = 0000 0001
-	// POLLOUT = 0000 0010
-	// POLLHUP = 0000 0100 -> the client hung up (closed the connection) -> Like the other side put down the phone
-	// POLLERR = 0000 1000 -> a socket error occurred -> Something went wrong at the network level
-	// POLLNVAL= 0001 0000 -> the fd is invalid (not open)
-	// POLLHUP | POLLERR | POLLNVAL = 0001 1100
 	if (revents & (POLLHUP | POLLERR | POLLNVAL))
 	{
 		drop_client(fd);
@@ -345,6 +339,5 @@ void	Server::run()
 		sweep_timeouts();
 	}
 
-	std::cout << "stopping; closing " << _clients.size()
-		<< " active client(s)\n";
+	std::cout << "stopping; closing " << _clients.size() << " active client(s)\n";
 }

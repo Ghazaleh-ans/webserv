@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/19 13:03:46 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/28 13:52:34 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 10:20:45 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,11 +28,10 @@ int	main(int argc, char** argv)
 		return 1;
 	}
 
-	// SIGPIPE: a synchronous signal that's sent to a process
-	// which attempts to write data to a socket or pipe that has been closed by the reading end
+	// Ignore SIGPIPE: writing to a closed connection returns -1 instead of killing us(send()/write())
 	std::signal(SIGPIPE, SIG_IGN);
 
-	// SIGINT (Ctrl-C) and SIGTERM cleanly stop the loop.
+	// SIGINT (Ctrl-C) and SIGTERM cleanly stop the loop
 	std::signal(SIGINT, handle_signal);
 	std::signal(SIGTERM, handle_signal);
 

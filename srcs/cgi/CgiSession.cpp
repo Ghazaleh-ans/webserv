@@ -193,7 +193,6 @@ CgiSession::CgiSession(const HttpRequest& req,
 		close(stdout_pipe[0]);
 		close(stdout_pipe[1]);
 
-		// chdir to script directory
 		if (chdir(script_dir.c_str()) == -1) {} // non-fatal: execve uses absolute path
 
 		std::vector<char*> argv_vec;
@@ -218,8 +217,6 @@ CgiSession::CgiSession(const HttpRequest& req,
 		const char* program = interpreter.empty()
 			? script_name.c_str() : interpreter.c_str();
 		execve(program, &argv_vec[0], &envp[0]);
-
-		// If we get here, execve failed
 		_exit(127);  // command not found code
 	}
 

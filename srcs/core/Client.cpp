@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/26 10:49:09 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 14:06:43 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,16 +35,10 @@ Client::Client(int fd, const ServerConfig& config)
 	  _response_built(false),
 	  _cgi(NULL)
 {
-	// The parser enforces a body-size cap *while* it reads bytes, long before
-	// routing has run -> at this point we don't yet know which location the
-	// request targets. A location may *raise* the limit above the server
-	// default, so if we capped the parser at the server limit it would reject
-	// (413) a body that the matched location would actually accept.
-	//
-	// Fix: cap the parser at the largest limit any location in this server
-	// could permit (the server default or any location override, whichever is
-	// bigger). This is a coarse safety bound; the precise per-location limit is
-	// still enforced after routing in ResponseBuilder via effective_body_limit.
+	// The parser caps the body size while reading, before routing knows which
+	// location applies. Cap it at the largest limit any location could allow,
+	// so we don't reject (413) a body a location would accept. The exact
+	// per-location limit is enforced later in ResponseBuilder
 	long max_body = _config->client_max_body_size;
 	for (size_t i = 0; i < _config->locations.size(); ++i)
 	{

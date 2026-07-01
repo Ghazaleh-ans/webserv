@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:49 by gansari           #+#    #+#             */
-/*   Updated: 2026/07/01 10:21:41 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 12:14:46 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,7 +53,6 @@ int	Listener::accept_one()
 		return -1;
 	}
 
-	// make the new client nonblocking
 	try
 	{
 		SocketUtils::set_nonblocking_cloexec(client_fd);

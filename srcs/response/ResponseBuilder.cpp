@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/01 17:43:01 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/26 13:58:12 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 13:25:38 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -307,10 +307,9 @@ std::string	ResponseBuilder::build_error(int code, const ServerConfig& server) c
 {
 	std::map<int, std::string>::const_iterator it = server.error_pages.find(code);
 
+	//Custom error page
 	if (it != server.error_pages.end() && !server.locations.empty())
 	{
-		// Resolve the configured error-page path against the first
-		// location's root.
 		const std::string& root = server.locations[0].root;
 		std::string fs_path = root;
 		const std::string& page = it->second;
@@ -321,7 +320,6 @@ std::string	ResponseBuilder::build_error(int code, const ServerConfig& server) c
 		std::string body;
 		if (read_file(fs_path, body))
 			return make_response(code, MimeTypes::content_type_for(fs_path), body, "");
-		// Custom page failed to load -> fall through to default
 	}
 
 	// Default: try www/errors/{code}.html relative to first location's root

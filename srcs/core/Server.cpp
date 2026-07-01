@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:29 by gansari           #+#    #+#             */
-/*   Updated: 2026/07/01 11:05:58 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 12:34:52 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -177,8 +177,7 @@ void	Server::register_cgi_fds(Client* c)
 
 void	Server::unregister_cgi_fds(Client* c)
 {
-	for (std::map<int, Client*>::iterator it = _cgi_fd_to_client.begin();
-		it != _cgi_fd_to_client.end(); )
+	for (std::map<int, Client*>::iterator it = _cgi_fd_to_client.begin(); it != _cgi_fd_to_client.end(); )
 	{
 		if (it->second == c)
 		{

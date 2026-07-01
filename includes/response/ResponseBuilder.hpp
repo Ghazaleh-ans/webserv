@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/01 17:43:01 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/23 12:37:24 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 18:13:29 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,7 @@ public:
 	~ResponseBuilder();
 
 	std::string	build(const HttpRequest& req, const RouteDecision& decision, const ServerConfig& server) const;
-	std::string	build_error(int code, const ServerConfig& server) const;
+	std::string	build_error(int code, const ServerConfig& server, const LocationConfig* loc = NULL) const;
 
 private:
 	std::string	build_serve(const HttpRequest& req, const RouteDecision& d, const ServerConfig& server) const;
@@ -39,6 +39,7 @@ private:
 	std::string	make_response(int code, const std::string& content_type, const std::string& body, const std::string& extra_headers) const;
 
 	std::string	reason_phrase(int code) const;
+	std::string	allow_header(const LocationConfig* loc) const;
 
 	std::string	handle_delete(const RouteDecision& d, const ServerConfig& server) const;
 	std::string	handle_upload(const HttpRequest& req, const RouteDecision& d, const ServerConfig& server) const;
@@ -46,4 +47,4 @@ private:
 	UploadHandler	_upload_handler;
 };
 
-#endif
+# endif

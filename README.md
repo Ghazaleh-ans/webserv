@@ -437,6 +437,7 @@ sequenceDiagram
 - [Proxy vs Reverse Proxy vs Load Balancer — YouTube](https://www.youtube.com/watch?v=xo5V9g9joFs) — context for where an HTTP server sits in an infrastructure
 - [NGINX Explained — YouTube](https://www.youtube.com/watch?v=iInUBOVeBCc) — conceptual overview of nginx architecture
 - [webserv: Building a Non-Blocking Web Server in C++98 — Medium](https://m4nnb3ll.medium.com/webserv-building-a-non-blocking-web-server-in-c-98-a-42-project-04c7365e4ec7) — another 42 student's writeup; useful for cross-referencing design decisions
+- [Properly configuring server MIME types](https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Server-side/Configuring_server_MIME_types) — all about MIME types
 
 ### Worth knowing
 

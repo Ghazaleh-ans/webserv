@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:30 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/01 13:58:01 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 10:39:41 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,14 +53,11 @@ void	safe_close(int fd)
 
 int	make_listener(const std::string& host, int port, int backlog)
 {
-	// socket() -> creates a socket (like buying a phone)
-	// AF_INET = IPv4, SOCK_STREAM = TCP, protocol 0 = pick default.
+	// AF_INET = IPv4, SOCK_STREAM = TCP, protocol 0 = pick default
 	int fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (fd == -1)
 		throw_errno("socket() failed");
 
-	// SO_REUSEADDR lets us restart the server immediately after a crash
-	// or normal shutdown without waiting for TIME_WAIT
 	int yes = 1;
 	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
 	{
@@ -99,7 +96,6 @@ int	make_listener(const std::string& host, int port, int backlog)
 		throw std::runtime_error("invalid host address: " + host);
 	}
 
-	// bind() -> assigns the socket an address and port (like getting a phone number)
 	if (bind(fd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == -1)
 	{
 		safe_close(fd);

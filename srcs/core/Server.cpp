@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:29 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/24 15:23:31 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 12:34:52 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -80,8 +80,7 @@ void	Server::build_pollfds()
 		_pfds.push_back(pfd);
 	}
 
-	for (std::map<int, Client*>::iterator it = _clients.begin();
-		it != _clients.end(); ++it)
+	for (std::map<int, Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
 	{
 		struct pollfd pfd;
 		pfd.fd = it->first;
@@ -94,8 +93,7 @@ void	Server::build_pollfds()
 		_pfds.push_back(pfd);
 	}
 
-	for (std::map<int, Client*>::iterator it = _cgi_fd_to_client.begin();
-		it != _cgi_fd_to_client.end(); ++it)
+	for (std::map<int, Client*>::iterator it = _cgi_fd_to_client.begin(); it != _cgi_fd_to_client.end(); ++it)
 	{
 		Client* c = it->second;
 		if (c->cgi() == NULL)
@@ -104,9 +102,9 @@ void	Server::build_pollfds()
 		pfd.fd = it->first;
 		pfd.events = 0;
 		pfd.revents = 0;
-		if (it->first == c->cgi()->stdin_fd() && c->cgi()->wants_write())
+		if (it->first == c->cgi()->stdin_fd() && c->cgi()->wants_stdin_write())
 			pfd.events |= POLLOUT;
-		else if (it->first == c->cgi()->stdout_fd() && c->cgi()->wants_read())
+		else if (it->first == c->cgi()->stdout_fd() && c->cgi()->wants_stdout_read())
 			pfd.events |= POLLIN;
 		if (pfd.events != 0)
 			_pfds.push_back(pfd);
@@ -131,12 +129,6 @@ void	Server::handle_client_event(int fd, short revents)
 	Client* c = it->second;
 
 	// POLLHUP/POLLERR/POLLNVAL mean the connection is gone or broken
-	// POLLIN  = 0000 0001
-	// POLLOUT = 0000 0010
-	// POLLHUP = 0000 0100 -> the client hung up (closed the connection) -> Like the other side put down the phone
-	// POLLERR = 0000 1000 -> a socket error occurred -> Something went wrong at the network level
-	// POLLNVAL= 0001 0000 -> the fd is invalid (not open)
-	// POLLHUP | POLLERR | POLLNVAL = 0001 1100
 	if (revents & (POLLHUP | POLLERR | POLLNVAL))
 	{
 		drop_client(fd);
@@ -185,8 +177,7 @@ void	Server::register_cgi_fds(Client* c)
 
 void	Server::unregister_cgi_fds(Client* c)
 {
-	for (std::map<int, Client*>::iterator it = _cgi_fd_to_client.begin();
-		it != _cgi_fd_to_client.end(); )
+	for (std::map<int, Client*>::iterator it = _cgi_fd_to_client.begin(); it != _cgi_fd_to_client.end(); )
 	{
 		if (it->second == c)
 		{
@@ -345,6 +336,5 @@ void	Server::run()
 		sweep_timeouts();
 	}
 
-	std::cout << "stopping; closing " << _clients.size()
-		<< " active client(s)\n";
+	std::cout << "stopping; closing " << _clients.size() << " active client(s)\n";
 }

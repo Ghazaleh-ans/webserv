@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/12 16:08:40 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/26 16:28:34 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 18:19:43 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -467,14 +467,16 @@ void	ConfigParser::validate_location(const LocationConfig& loc, const std::strin
 	if (!loc.has_redirect && loc.root.empty())
 		throw std::runtime_error("location '" + loc.path + "' in server " + server_ctx + " has no 'root' and no 'return' - nothing to serve");
 
+	bool has_post = false;
+	for (size_t i = 0; i < loc.methods.size(); ++i)
+		if (loc.methods[i] == "POST")
+			has_post = true;
+
 	// If uploads are allowed, the location must accept POST
-	if (!loc.upload_store.empty())
-	{
-		bool has_post = false;
-		for (size_t i = 0; i < loc.methods.size(); ++i)
-			if (loc.methods[i] == "POST")
-				has_post = true;
-		if (!has_post)
-			throw std::runtime_error("location '" + loc.path + "' in server " + server_ctx + " sets 'upload_store' but doesn't allow POST");
-	}
+	if (!loc.upload_store.empty() && !has_post)
+		throw std::runtime_error("location '" + loc.path + "' in server " + server_ctx + " sets 'upload_store' but doesn't allow POST");
+
+	// POST needs a handler: an upload_store or a CGI extension and pure redirect location ignores methods
+	if (has_post && !loc.has_redirect && loc.upload_store.empty() && loc.cgi_handlers.empty())
+		throw std::runtime_error("location '" + loc.path + "' in server " + server_ctx + " allows POST but has no 'upload_store' or 'cgi_extension' to handle it");
 }

@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:02 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/26 16:28:15 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 16:38:13 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -60,9 +60,8 @@ public:
 	// Returns false on fatal error.
 	bool					on_writable();
 
-	// Build a response from the parsed request. Module 3 still uses a
-	// minimal canned response; Modules 4 and 5 will replace this with
-	// real routing and static-file serving.
+	// Route the parsed request and build the response into _out_buffer,
+	// or start a CgiSession when routing resolves to a CGI script.
 	void					build_response();
 
 	// Build an error response when the parser fails with a status code.
@@ -93,4 +92,4 @@ private:
 	Client&	operator=(const Client&);
 };
 
-#endif
+# endif

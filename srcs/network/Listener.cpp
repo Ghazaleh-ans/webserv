@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:49 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/23 10:13:38 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 12:14:46 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,6 @@ Listener::Listener(const ServerConfig& config)
 {
 	// SOMAXCONN -> SOcket MAXimum CONNections -> backlog -> pending connections in queue
 	// waiting to be accept
-	// For backlog: modern Linux silently allows more but 128 is plenty for a project server
 	_fd = SocketUtils::make_listener(config.host, config.port, SOMAXCONN);
 }
 
@@ -54,7 +53,6 @@ int	Listener::accept_one()
 		return -1;
 	}
 
-	// make the new client nonblocking
 	try
 	{
 		SocketUtils::set_nonblocking_cloexec(client_fd);

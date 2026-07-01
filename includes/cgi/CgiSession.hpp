@@ -47,8 +47,8 @@ public:
 	int		stdout_fd() const;
 	pid_t	pid() const;
 
-	bool	wants_write() const;   // true when body still has bytes to write
-	bool	wants_read() const;    // true while stdout pipe is open
+	bool	wants_stdin_write() const;  // true when body still has bytes to write
+	bool	wants_stdout_read() const;  // true while stdout pipe is open
 	bool	is_finished() const;   // child exited AND stdout closed AND body fully sent
 
 	std::time_t	last_active() const;

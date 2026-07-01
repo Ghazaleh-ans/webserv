@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/01 17:43:01 by gansari           #+#    #+#             */
-/*   Updated: 2026/07/01 16:31:29 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/01 18:34:24 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -226,10 +226,14 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req, const RouteDeci
 {
 	if (req.method == "DELETE")
 		return handle_delete(d, server);
-	// POST with upload_store configured -> upload handler
-	// Without upload_store, a POST to a normal location just falls through to the GET-like serve path
+	// POST with upload_store configured -> upload handler (else 405 below)
 	if (req.method == "POST" && d.location != NULL && !d.location->upload_store.empty())
 		return handle_upload(req, d, server);
+
+	// POST reached the plain serve path: no upload_store, no CGI handler either -> Nothing can
+	// consume the body -> 405
+	if (req.method == "POST")
+		return build_error(405, server, d.location);
 
 	const std::string& root = d.location ? d.location->root : std::string();
 
@@ -298,8 +302,28 @@ std::string	ResponseBuilder::build_serve(const HttpRequest& req, const RouteDeci
 	return make_response(200, MimeTypes::content_type_for(d.fs_path), body, "");
 }
 
-std::string	ResponseBuilder::build_error(int code, const ServerConfig& server) const
+// Build the "Allow:" header value for a 405
+std::string	ResponseBuilder::allow_header(const LocationConfig* loc) const
 {
+	std::string methods;
+	if (loc == NULL || loc->methods.empty())
+		methods = "GET";
+	else
+	{
+		for (size_t i = 0; i < loc->methods.size(); ++i)
+		{
+			if (!methods.empty())
+				methods += ", ";
+			methods += loc->methods[i];
+		}
+	}
+	return "Allow: " + methods + "\r\n";
+}
+
+std::string	ResponseBuilder::build_error(int code, const ServerConfig& server, const LocationConfig* loc) const
+{
+	std::string extra = (code == 405) ? allow_header(loc) : "";
+
 	std::map<int, std::string>::const_iterator it = server.error_pages.find(code);
 
 	//Custom error page
@@ -314,7 +338,7 @@ std::string	ResponseBuilder::build_error(int code, const ServerConfig& server) c
 
 		std::string body;
 		if (read_file(fs_path, body))
-			return make_response(code, MimeTypes::content_type_for(fs_path), body, "");
+			return make_response(code, MimeTypes::content_type_for(fs_path), body, extra);
 	}
 
 	// Default: try www/errors/{code}.html relative to first location's root
@@ -324,7 +348,7 @@ std::string	ResponseBuilder::build_error(int code, const ServerConfig& server) c
 		default_path << server.locations[0].root << "/errors/" << code << ".html";
 		std::string body;
 		if (read_file(default_path.str(), body))
-			return make_response(code, "text/html; charset=utf-8", body, "");
+			return make_response(code, "text/html; charset=utf-8", body, extra);
 	}
 
 	// Last-resort inline fallback
@@ -335,7 +359,7 @@ std::string	ResponseBuilder::build_error(int code, const ServerConfig& server) c
 		<< "<body><h1>" << code << " " << reason_phrase(code) << "</h1>\r\n"
 		<< "<p>webserv</p></body></html>\r\n";
 
-	return make_response(code, "text/html; charset=utf-8", body.str(), "");
+	return make_response(code, "text/html; charset=utf-8", body.str(), extra);
 }
 
 std::string	ResponseBuilder::build(const HttpRequest& req, const RouteDecision& d, const ServerConfig& server) const
@@ -347,7 +371,7 @@ std::string	ResponseBuilder::build(const HttpRequest& req, const RouteDecision& 
 		case RouteDecision::KIND_REDIRECT:
 			return build_redirect(d);
 		case RouteDecision::KIND_ERROR:
-			return build_error(d.error_code, server);
+			return build_error(d.error_code, server, d.location);
 		case RouteDecision::KIND_CGI:
 			return build_error(500, server); // This will never happen
 		default:

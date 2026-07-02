@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/08 12:47:45 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/26 16:28:01 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/02 14:51:43 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,8 +27,7 @@
 static const size_t	CGI_READ_CHUNK = 8192;
 
 // These are the meta-variables every CGI script expects to find -> KEY=VALUE
-// We also forward request headers as HTTP_* variables,
-// which is how the CGI sees things like User-Agent and Cookie
+// We also forward request headers as HTTP_* variables, which is how the CGI sees things
 std::vector<std::string>	CgiSession::build_env(
 		const HttpRequest& req,
 		const std::string& script_path,
@@ -43,24 +42,15 @@ std::vector<std::string>	CgiSession::build_env(
 	env.push_back("REQUEST_METHOD=" + req.method);
 	env.push_back("QUERY_STRING=" + req.query);
 	env.push_back("SCRIPT_FILENAME=" + script_path);
-
 	env.push_back("SCRIPT_NAME=" + req.path);
-
-	// PATH_INFO: anything in the URI after the script name. We don't
-	// distinguish for now -> so it's empty.
 	env.push_back("PATH_INFO=");
-
-	// Server identification
 	env.push_back("SERVER_NAME=" + server.host);
 	ss.str("");
 	ss << server.port;
 	env.push_back("SERVER_PORT=" + ss.str());
-
-	// REMOTE_ADDR / REMOTE_HOST -> we don't track the peer address in the current Client
 	env.push_back("REMOTE_ADDR=");
 	env.push_back("REMOTE_HOST=");
 
-	// Content meta-variables for POST
 	if (!req.body.empty())
 	{
 		ss.str("");
@@ -76,10 +66,9 @@ std::vector<std::string>	CgiSession::build_env(
 		env.push_back("CONTENT_TYPE=" + ct);
 
 	// REDIRECT_STATUS=200 is a php-CGI quirk: without it, php-cgi refuses
-	// to run "for security." Setting it satisfies that check.
+	// to run "for security." Setting it satisfies that check
 	env.push_back("REDIRECT_STATUS=200");
 
-	// --- HTTP_* - every request header forwarded ---
 	// "User-Agent: foo" -> HTTP_USER_AGENT=foo (uppercased, dashes to underscores)
 	for (std::map<std::string, std::string, CaseInsensitiveLess>::const_iterator
 			it = req.headers.begin(); it != req.headers.end(); ++it)
@@ -133,6 +122,7 @@ CgiSession::CgiSession(const HttpRequest& req,
 	  _child_exited(false),
 	  _child_status(0),
 	  _killed_by_timeout(false),
+	  _force_killed(false),
 	  _last_active(std::time(NULL))
 {
 	int	stdin_pipe[2]; // server -> CGI child (send request body)
@@ -147,8 +137,7 @@ CgiSession::CgiSession(const HttpRequest& req,
 		throw std::runtime_error("CGI: pipe(stdout) failed");
 	}
 
-	std::vector<std::string> env_strings =
-		build_env(req, script_path, server);
+	std::vector<std::string> env_strings = build_env(req, script_path, server);
 
 	std::string script_dir;
 	std::string script_name;
@@ -213,9 +202,8 @@ CgiSession::CgiSession(const HttpRequest& req,
 			envp.push_back(const_cast<char*>(env_strings[i].c_str()));
 		envp.push_back(NULL);
 
-		// Execute. If execve returns, it failed.
-		const char* program = interpreter.empty()
-			? script_name.c_str() : interpreter.c_str();
+		// Execute
+		const char* program = interpreter.empty() ? script_name.c_str() : interpreter.c_str();
 		execve(program, &argv_vec[0], &envp[0]);
 		_exit(127);  // command not found code
 	}
@@ -229,7 +217,6 @@ CgiSession::CgiSession(const HttpRequest& req,
 	_stdin_fd = stdin_pipe[1]; // Server writes HTTP request body into this
 	_stdout_fd = stdout_pipe[0]; // Server reads the CGI's response from this
 
-	// Non-blocking + FD_CLOEXEC: these pipe fds join the poll() loop.
 	try
 	{
 		SocketUtils::set_nonblocking_cloexec(_stdin_fd);
@@ -237,7 +224,6 @@ CgiSession::CgiSession(const HttpRequest& req,
 	}
 	catch (...)
 	{
-		// Couldn't set non-blocking -> kill child
 		kill(_pid, SIGKILL);
 		waitpid(_pid, NULL, 0);
 		SocketUtils::safe_close(_stdin_fd);
@@ -298,12 +284,13 @@ bool	CgiSession::is_finished() const
 int		CgiSession::failure_code() const
 {
 	if (_killed_by_timeout) return 504;
+	if (_force_killed)      return 502;
 	return 502;
 }
 
 bool	CgiSession::was_killed() const
 {
-	return _killed_by_timeout;
+	return _killed_by_timeout || _force_killed;
 }
 
 bool	CgiSession::exited_with_error() const
@@ -406,11 +393,14 @@ void	CgiSession::check_child()
 	}
 }
 
-void	CgiSession::kill_child()
+void	CgiSession::kill_child(KillReason reason)
 {
 	if (_pid > 0 && !_child_exited)
 	{
-		_killed_by_timeout = true;
+		if (reason == KILL_TIMEOUT)
+			_killed_by_timeout = true;
+		else
+			_force_killed = true;
 		kill(_pid, SIGKILL);
 		// Don't waitpid here -> it would block -> check_child() reaps on the next iteration
 	}
@@ -428,21 +418,20 @@ void	CgiSession::kill_child()
 }
 
 // CGI output (_stdout_buf):
-//   Status: 404 Not Found\r\n
-//   Content-Type: text/html\r\n
+//   Content-Type: text/plain\r\n
 //   \r\n
-//   <html><body>Not Found</body></html>
+//   hello world
 //
 // HTTP response we emit:
-//   HTTP/1.1 404 Not Found\r\n
-//   Content-Type: text/html\r\n
-//   Content-Length: 36\r\n
+//   HTTP/1.1 200 OK\r\n
+//   Content-Type: text/plain\r\n
+//   Content-Length: 11\r\n
 //   Connection: close\r\n
 //   \r\n
-//   <html><body>Not Found</body></html>
+//   hello world
 //
-// "Status:" is stripped and becomes the HTTP status line.
-// Content-Type defaults to text/html if the CGI didn't emit one.
+// If the script emits "Status: XYZ ...", that line is stripped and becomes
+// the HTTP status line. Content-Type defaults to text/html if not emitted.
 std::string	CgiSession::build_response() const
 {
 	// Find the end of headers -> first blank line (\r\n\r\n or \n\n).
@@ -499,7 +488,6 @@ std::string	CgiSession::build_response() const
 
 			if (lname == "status")
 			{
-				// "Status: 404 Not Found" -> "HTTP/1.1 404 Not Found"
 				status_line = "HTTP/1.1 " + value;
 			}
 			else if (lname == "content-type")
@@ -509,7 +497,7 @@ std::string	CgiSession::build_response() const
 			}
 			else
 			{
-				// Pass through other headers (Set-Cookie, Location, etc.)
+				// Pass through other headers
 				extra_headers += name + ": " + value + "\r\n";
 			}
 		}

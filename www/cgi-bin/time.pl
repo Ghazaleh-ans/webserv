@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Perl CGI type. Selected by `cgi_extension .pl /usr/bin/perl;`.
+
 use strict;
 use warnings;
 

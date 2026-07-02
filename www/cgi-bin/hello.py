@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Basic GET test: prints env vars the server should have set.
+
 import os
 import sys
 

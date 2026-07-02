@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:28:56 by gansari           #+#    #+#             */
-/*   Updated: 2026/07/01 14:06:43 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/02 14:36:15 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -161,13 +161,12 @@ void	Client::finalize_cgi()
 	touch();
 	if (_cgi->was_killed())
 	{
-		// Killed (timeout, fatal I/O error) -> emit a proper error response
+		// Killed (timeout, fatal I/O error)
 		_out_buffer = _response_builder.build_error(_cgi->failure_code(), *_config);
 	}
 	else if (_cgi->exited_with_error())
 	{
-		// Misconfigured interpreter or a script that crashed/exited non-zero:
-		// don't ship its (often empty) output as a 200 -> emit a 502
+		// Misconfigured interpreter or a script that crashed/exited non-zero(execve error)
 		_out_buffer = _response_builder.build_error(502, *_config);
 	}
 	else

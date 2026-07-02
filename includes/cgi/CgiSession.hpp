@@ -34,6 +34,8 @@
 // The Client that triggered this session owns it (new/delete). The Server
 // borrows the pipe fds for poll registration and calls back into the Client
 // when the session finishes.
+enum KillReason { KILL_TIMEOUT, KILL_IO_ERROR };
+
 class CgiSession
 {
 public:
@@ -59,7 +61,7 @@ public:
 
 	void	check_child();
 
-	void	kill_child();
+	void	kill_child(KillReason reason);
 
 	std::string	build_response() const;
 
@@ -81,6 +83,7 @@ private:
 	bool		_child_exited;
 	int			_child_status;
 	bool		_killed_by_timeout;
+	bool		_force_killed;
 
 	std::time_t	_last_active;
 

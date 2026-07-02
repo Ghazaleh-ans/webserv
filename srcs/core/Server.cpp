@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/15 16:29:29 by gansari           #+#    #+#             */
-/*   Updated: 2026/07/01 12:34:52 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/02 13:41:03 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -227,7 +227,7 @@ void	Server::handle_cgi_event(int fd, short revents)
 	if (!ok)
 	{
 		// Force termination -> finalize_cgi in check_cgi_progress will produce a 502
-		cgi->kill_child();
+		cgi->kill_child(KILL_IO_ERROR);
 	}
 }
 
@@ -237,8 +237,7 @@ void	Server::check_cgi_progress()
 	std::time_t now = std::time(NULL);
 	std::vector<Client*> to_finalize;
 
-	for (std::map<int, Client*>::iterator it = _clients.begin();
-		it != _clients.end(); ++it)
+	for (std::map<int, Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
 	{
 		Client* c = it->second;
 		if (!c->has_cgi())
@@ -248,7 +247,7 @@ void	Server::check_cgi_progress()
 
 		if (!cgi->is_finished() && now - cgi->last_active() > CGI_TIMEOUT_SECONDS)
 		{
-			cgi->kill_child();
+			cgi->kill_child(KILL_TIMEOUT);
 		}
 
 		if (cgi->is_finished())

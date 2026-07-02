@@ -6,7 +6,7 @@
 /*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/08 12:47:45 by gansari           #+#    #+#             */
-/*   Updated: 2026/07/02 12:09:02 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/02 14:51:43 by gansari          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -418,21 +418,20 @@ void	CgiSession::kill_child(KillReason reason)
 }
 
 // CGI output (_stdout_buf):
-//   Status: 404 Not Found\r\n
-//   Content-Type: text/html\r\n
+//   Content-Type: text/plain\r\n
 //   \r\n
-//   <html><body>Not Found</body></html>
+//   hello world
 //
 // HTTP response we emit:
-//   HTTP/1.1 404 Not Found\r\n
-//   Content-Type: text/html\r\n
-//   Content-Length: 36\r\n
+//   HTTP/1.1 200 OK\r\n
+//   Content-Type: text/plain\r\n
+//   Content-Length: 11\r\n
 //   Connection: close\r\n
 //   \r\n
-//   <html><body>Not Found</body></html>
+//   hello world
 //
-// "Status:" is stripped and becomes the HTTP status line.
-// Content-Type defaults to text/html if the CGI didn't emit one.
+// If the script emits "Status: XYZ ...", that line is stripped and becomes
+// the HTTP status line. Content-Type defaults to text/html if not emitted.
 std::string	CgiSession::build_response() const
 {
 	// Find the end of headers -> first blank line (\r\n\r\n or \n\n).
@@ -489,7 +488,6 @@ std::string	CgiSession::build_response() const
 
 			if (lname == "status")
 			{
-				// "Status: 404 Not Found" -> "HTTP/1.1 404 Not Found"
 				status_line = "HTTP/1.1 " + value;
 			}
 			else if (lname == "content-type")
@@ -499,7 +497,7 @@ std::string	CgiSession::build_response() const
 			}
 			else
 			{
-				// Pass through other headers (Set-Cookie, Location, etc.)
+				// Pass through other headers
 				extra_headers += name + ": " + value + "\r\n";
 			}
 		}

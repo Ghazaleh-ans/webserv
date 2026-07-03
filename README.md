@@ -8,7 +8,7 @@
 
 webserv is a non-blocking HTTP/1.1 server written in C++98 from scratch, inspired by nginx. The goal is to understand how a real HTTP server works at the socket level — from accepting a TCP connection, parsing raw bytes into an HTTP request, routing to the right handler, and writing a well-formed response back — without relying on any networking library.
 
-The server uses `poll()` for I/O multiplexing across all file descriptors — listening sockets, client connections, and CGI pipes — in a single event loop. It supports static file serving, directory listings, file uploads, configurable redirects, and CGI execution (Python, PHP, or any interpreter).
+The server uses `poll()` for I/O multiplexing across all file descriptors — listening sockets, client connections, and CGI pipes — in a single event loop. It supports static file serving, directory listings, file uploads, configurable redirects, and CGI execution (Python, Bash, Perl, self-executing scripts, or any interpreter).
 
 Configuration follows an nginx-like syntax: one or more `server` blocks, each with `location` sub-blocks for routing rules, upload directories, CGI extensions, and method restrictions.
 
@@ -43,12 +43,17 @@ make fclean # remove obj/ + binary
 **Execution:**
 
 ```bash
-./webserv configs/test.conf              # ports 8080 + 9090
-./webserv configs/integration.conf       # ports 8080 + 8081
-./webserv configs/upload.conf            # upload test
+./webserv configs/test_general.conf      # everything, two servers on 8080 + 9090
+./webserv configs/test_multiport.conf    # three servers on 8080 + 8081 + 8082
+./webserv configs/test_upload.conf       # upload + DELETE test
+./webserv configs/test_cgi.conf          # CGI: python / bash / perl / self-executing
 ```
 
-Config files live in `configs/`. Static content and CGI scripts live under `www/`. Stop the server with `Ctrl-C`.
+Config files live in `configs/`, each one focused on a single feature area
+(`test_static.conf`, `test_methods.conf`, `test_routing.conf`, `test_autoindex.conf`,
+`test_body_size.conf`, `test_redirect.conf`, `test_errors.conf`, …), with
+`test_general.conf` exercising them all at once. Static content and CGI scripts live
+under `www/`. Stop the server with `Ctrl-C`.
 
 ---
 
@@ -282,7 +287,7 @@ graph LR
 | Content-Length enforcement | Required for bodies | Required or chunked | Enforced — bodies over `client_max_body_size` are rejected with 413 |
 | Methods | GET, POST, HEAD | GET, POST, HEAD, PUT, DELETE, OPTIONS, TRACE | GET, POST, DELETE only — anything else returns 501 |
 | Status codes | Basic | Full range | Full 2xx/3xx/4xx/5xx set with configurable custom error pages |
-| 3xx redirects | No | Full | `return <code> <url>` per location block |
+| 3xx redirects | No | Full | `return 301 <url>` per location block (301 Moved Permanently — the only redirect status with a reason phrase; target may be an internal path or an absolute URL) |
 | Virtual hosts via `Host` header | No | Yes | **No — server config is fixed at accept() time by which port was used; Host header is validated but not used for routing** |
 | HTTPS / TLS | No | No (separate layer) | Not implemented |
 | HTTP/2 | No | No | Not implemented |
@@ -360,8 +365,10 @@ server {
     location /cgi-bin {
         root www;
         methods GET POST;
-        cgi_extension .py /usr/bin/python3;
-        cgi_extension .php /usr/bin/php-cgi;
+        cgi_extension .py /usr/bin/python3;   # Python
+        cgi_extension .sh /bin/bash;          # Shell
+        cgi_extension .pl /usr/bin/perl;      # Perl
+        cgi_extension .cgi;                   # self-executing via shebang
     }
 
     location /old {
@@ -381,7 +388,7 @@ sequenceDiagram
     participant S as Server poll loop
     participant C as Client
     participant CS as CgiSession
-    participant P as "CGI process (python/php)"
+    participant P as "CGI process (python/bash/perl)"
 
     C->>CS: construct (fork + exec + 2 pipes)
     CS->>P: fork() + execve(interpreter, script)
@@ -402,7 +409,7 @@ sequenceDiagram
     C->>C: finalize_cgi() → parse CGI headers + build HTTP response
 ```
 
-- CGI is triggered by file extension (`.py`, `.php`, etc.) per location.
+- CGI is triggered by file extension per location. A handler can name an interpreter (`.py` → `/usr/bin/python3`, `.sh` → `/bin/bash`, `.pl` → `/usr/bin/perl`) or omit it (`.cgi`), in which case the script is executed directly and the kernel picks the interpreter from its shebang.
 - Chunked request bodies are unchunked before being piped to the CGI process.
 - CGI stdout is read until EOF; `Content-Length` is injected if the CGI did not provide one.
 - CGI processes time out after 25 seconds → 504 response.

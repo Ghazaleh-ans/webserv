@@ -4,24 +4,34 @@ A practical, table-based guide for manually testing **webserv**: **what** each t
 
 > Always inspect the *status line and headers*, not just the body. Use `curl -i` (include response headers) or `curl -v` (full request+response trace) — a page that "looks right" in a browser can still carry a wrong status code or a missing/duplicated header.
 
-Unless noted, tables assume the feature-test config:
+The configs are split by feature (`test_static.conf`, `test_methods.conf`, `test_cgi.conf`,
+`test_upload.conf`, `test_routing.conf`, `test_autoindex.conf`, `test_body_size.conf`,
+`test_redirect.conf`, `test_errors.conf`, `test_multiport.conf`). Unless a row names a
+different config, tables assume the all-in-one config, which brings every feature together
+across two servers:
 
 ```bash
-./webserv configs/test.conf     # server A on 127.0.0.1:8080, server B on 0.0.0.0:9090
+./webserv configs/test_general.conf   # server A on 127.0.0.1:8080, server B on 127.0.0.1:9090
 ```
 
 > **Connection model:** this server uses **HTTP/1.0-style connections** — every response carries `Connection: close` and the socket is dropped after it. There is **no keep-alive and no pipelining**, so tests for persistent/reused connections don't apply and are intentionally excluded. (Chunked request decoding and the HTTP/1.1 `Host` requirement *are* implemented and are tested below.)
 
-Routes in `configs/test.conf`:
+Routes in `configs/test_general.conf`:
 
 | Route | Methods | Purpose |
 |-------|---------|---------|
 | `/` | GET | static site, `index.html`, `autoindex off` |
-| `/upload` | POST DELETE | file upload (`upload_store www/uploads`, 10M limit) |
-| `/cgi-bin` | GET POST | CGI (`.py` → python3) |
-| `/old` | — | `return 301 /new` |
+| `/static` | GET | static dir with a non-default index (`page.html`) |
 | `/files` | GET | static dir with `autoindex on` |
-| `:9090 /` `/api` | GET (DELETE) | second server, custom error pages |
+| `/upload` | GET POST DELETE | file upload (`upload_store www/uploads`, raised 10M limit) |
+| `/deletable` | GET DELETE | DELETE target |
+| `/cgi-bin` | GET POST | CGI — `.py`→python3, `.sh`→bash, `.pl`→perl, `.cgi`→self-executing |
+| `/old` | — | `return 301 /new` |
+| `/errors` | GET | custom error pages served directly |
+| `:9090 /` `/api` | GET (DELETE) | second server (`api` route, custom error pages) |
+| `:9090 /small` | POST | tiny 200-byte limit → easy `413` |
+
+Server-level `client_max_body_size` is **2m** on `:8080` and **1m** on `:9090`; `/upload` raises its own limit to **10m**.
 
 > **Browser column:** only `GET` fits in the address bar. For `POST`/`DELETE`/header tricks, use `curl` (or devtools `fetch`). A `—` means "not doable from the address bar".
 
@@ -47,6 +57,12 @@ Routes in `configs/test.conf`:
 | 14 | Directory → 301 add trailing slash | `curl -i http://127.0.0.1:8080/files` (no slash → `301` `Location: /files/`) | `http://127.0.0.1:8080/files` |
 | 15 | CGI env dump (GET) | `curl -i http://127.0.0.1:8080/cgi-bin/hello.py` | `http://127.0.0.1:8080/cgi-bin/hello.py` |
 | 16 | Second-server file route | `curl -i http://127.0.0.1:9090/api/index.html` | `http://127.0.0.1:9090/api/index.html` |
+| 17 | Non-default index filename | `curl -i http://127.0.0.1:8080/static/` (serves `page.html`, not `index.html`) | `http://127.0.0.1:8080/static/` |
+| 18 | CGI via bash (`.sh`) | `curl -i http://127.0.0.1:8080/cgi-bin/info.sh` | `http://127.0.0.1:8080/cgi-bin/info.sh` |
+| 19 | CGI via perl (`.pl`) | `curl -i http://127.0.0.1:8080/cgi-bin/time.pl` | `http://127.0.0.1:8080/cgi-bin/time.pl` |
+| 20 | Self-executing CGI (`.cgi`, no interpreter configured — shebang picks it) | `curl -i http://127.0.0.1:8080/cgi-bin/whoami.cgi` | `http://127.0.0.1:8080/cgi-bin/whoami.cgi` |
+| 21 | DELETE on a GET+DELETE route | `curl -i -X DELETE http://127.0.0.1:8080/deletable/test.txt` | — |
+| 22 | Multiple ports, one Listener each | `./webserv configs/test_multiport.conf` → `curl -i http://127.0.0.1:8080/` · `curl -i http://127.0.0.1:8081/` · `curl -i http://127.0.0.1:8082/` (three servers, different roots) | `http://127.0.0.1:8081/` |
 
 > **Upload note (test 9):** the body must be non-empty or the server returns **400** (`empty body`). If curl can't find the file it silently sends an empty POST — run from the repo root or use an absolute path, and use `-sS` to surface curl's "couldn't read file" warning. `--data-binary` does not send the local filename, so pass `-H "X-Filename: ..."` (or put the name in the URI) to control the saved name. Multipart (`-F`) is **not** implemented, so it's intentionally omitted here.
 
@@ -59,9 +75,9 @@ Routes in `configs/test.conf`:
 | 1 | Not found | `404` | `curl -i http://127.0.0.1:8080/nope.html` | `http://127.0.0.1:8080/nope.html` |
 | 2 | Method not allowed | `405` | `curl -i -X POST http://127.0.0.1:8080/` | — |
 | 3 | DELETE on GET-only route | `405` | `curl -i -X DELETE http://127.0.0.1:8080/index.html` | — |
-| 4 | Body over server `client_max_body_size` | `413` | `head -c 2M /dev/zero \| curl -i -X POST --data-binary @- http://127.0.0.1:8080/cgi-bin/echo.py` (inherits the 1m server cap) | — |
-| 5 | Per-location small limit | `413` | `./webserv configs/upload.conf` → `head -c 200 /dev/zero \| curl -i -X POST --data-binary @- http://127.0.0.1:8080/small-upload` | — |
-| 6 | Dir, no index, autoindex off | `403` | `curl -i http://127.0.0.1:8080/uploads/` | `http://127.0.0.1:8080/uploads/` |
+| 4 | Body over server `client_max_body_size` | `413` | `head -c 3M /dev/zero \| curl -i -X POST --data-binary @- http://127.0.0.1:8080/cgi-bin/echo.py` (inherits the 2m server cap) | — |
+| 5 | Per-location small limit | `413` | `./webserv configs/test_upload.conf` → `head -c 200 /dev/zero \| curl -i -X POST --data-binary @- http://127.0.0.1:8080/small-upload` | — |
+| 6 | Dir, no index, autoindex off | `403` | `./webserv configs/test_errors.conf` → `curl -i http://127.0.0.1:8080/forbidden/` | `http://127.0.0.1:8080/forbidden/` |
 | 7 | Directory traversal blocked | never serves `/etc/passwd` | `curl -i --path-as-is http://127.0.0.1:8080/../../etc/passwd` | — |
 | 8 | Encoded traversal blocked | `403/404` | `curl -i --path-as-is "http://127.0.0.1:8080/%2e%2e/%2e%2e/etc/passwd"` | — |
 | 9 | Unknown method | `400/501` | `curl -i -X BREW http://127.0.0.1:8080/` | — |
@@ -72,7 +88,7 @@ Routes in `configs/test.conf`:
 | 14 | CGI timeout | `504` after ~30s | `curl -i http://127.0.0.1:8080/cgi-bin/slow.py` | `http://127.0.0.1:8080/cgi-bin/slow.py` |
 | 15 | CGI script missing | `404` | `curl -i http://127.0.0.1:8080/cgi-bin/ghost.py` | — |
 | 16 | Custom error page body | `404` w/ `www/errors/404.html` | `curl -i http://127.0.0.1:9090/missing` | `http://127.0.0.1:9090/missing` |
-| 17 | `/foo` must NOT match `/foobar` | `/` route, not `/foo` | `./webserv configs/routing.conf` → `curl -i http://127.0.0.1:8080/foobar` | `http://127.0.0.1:8080/foobar` |
+| 17 | `/foo` must NOT match `/foobar` | `/` route, not `/foo` | `./webserv configs/test_routing.conf` → `curl -i http://127.0.0.1:8080/foobar` | `http://127.0.0.1:8080/foobar` |
 | 18 | Empty-body POST | handled, no crash | `curl -i -X POST -H "Content-Length: 0" http://127.0.0.1:8080/upload` | — |
 | 19 | Very long URI | `414`, no crash | `curl -i "http://127.0.0.1:8080/$(python3 -c 'print("a"*20000)')"` (≈8 KB request line still 404s; 20000 trips the cap) | — |
 | 20 | Partial/slow send (slowloris-lite) | conn times out, server survives | `printf 'GET / HTTP/1.1\r\n' \| nc 127.0.0.1 8080` (leave hanging) | — |
@@ -84,7 +100,7 @@ Routes in `configs/test.conf`:
 | 26 | Raw chunked reassembly (telnet) | body = `Webserv!` | `printf 'POST /cgi-bin/echo.py HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n4\r\nWebs\r\n4\r\nerv!\r\n0\r\n\r\n' \| nc 127.0.0.1 8080` | — |
 | 27 | DELETE missing file | `404` | `curl -i -X DELETE http://127.0.0.1:8080/upload/ghost.txt` | — |
 | 28 | DELETE a directory | `403` | `curl -i -X DELETE http://127.0.0.1:8080/upload/` | — |
-| 29 | Per-location limit RAISES server default | `201` (2 MB accepted at 10M `/upload`, though server is 1m) | `head -c 2M /dev/zero \| curl -i -X POST --data-binary @- http://127.0.0.1:8080/upload` | — |
+| 29 | Per-location limit RAISES server default | `201` (3 MB accepted at 10M `/upload`, though server is 2m) | `head -c 3M /dev/zero \| curl -i -X POST --data-binary @- http://127.0.0.1:8080/upload` | — |
 | 30 | CGI exits non-zero with no output | `502` | make `www/cgi-bin/boom.py` (`#!/usr/bin/env python3` + `import sys; sys.exit(1)`), `chmod +x`, then `curl -i http://127.0.0.1:8080/cgi-bin/boom.py` | — |
 | 31 | CRLF in upload filename stays encoded (no header injection) | `201`; `%0d%0a` kept literal in `Location:`, no `X-Injected` header | `curl -i --path-as-is -X POST --data-binary x "http://127.0.0.1:8080/upload/foo%0d%0aX-Injected:%20yes"` | — |
 | 32 | Every response is `Connection: close` (HTTP/1.0-style) | header present | `curl -sv http://127.0.0.1:8080/ 2>&1 \| grep -i '^< connection'` | — |
@@ -98,7 +114,7 @@ Run under valgrind, exercise, then stop with `Ctrl-C` (SIGINT) so graceful shutd
 
 ```bash
 valgrind --leak-check=full --show-leak-kinds=all --track-fds=yes --error-exitcode=1 \
-         ./webserv configs/test.conf
+         ./webserv configs/test_general.conf
 ```
 
 | # | What to exercise for leaks | How to drive it (other terminal) |
@@ -109,7 +125,7 @@ valgrind --leak-check=full --show-leak-kinds=all --track-fds=yes --error-exitcod
 | 4 | CGI fork/exec/env cleanup | `curl "http://127.0.0.1:8080/cgi-bin/greet.py?name=x"` — env array + pipe fds |
 | 5 | CGI timeout kill path | `curl http://127.0.0.1:8080/cgi-bin/slow.py` — child killed at 30s |
 | 6 | Upload buffers (raw body) | `curl -X POST -H "X-Filename: r.md" --data-binary @README.md http://127.0.0.1:8080/upload` |
-| 7 | 413 rejection path | `head -c 2M /dev/zero \| curl -X POST --data-binary @- http://127.0.0.1:8080/cgi-bin/echo.py` (2 MB > 1m server cap → 413) |
+| 7 | 413 rejection path | `head -c 3M /dev/zero \| curl -X POST --data-binary @- http://127.0.0.1:8080/cgi-bin/echo.py` (3 MB > 2m server cap → 413) |
 | 8 | Error-response allocation | `curl http://127.0.0.1:9090/missing` |
 | 9 | Client aborts mid-request | `printf 'GET / HTTP/1.1\r\n' \| nc 127.0.0.1 8080` then Ctrl-C the nc |
 | 10 | Many short-lived connections | `ab -n 500 -c 20 http://127.0.0.1:8080/` then SIGINT |

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequestParser.hpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
+/*   By: mibrokhimov <contact@ibrokhimov.de>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/20 11:09:30 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/23 12:10:53 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/04 18:51:11 by mibrokhimov      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 

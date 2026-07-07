@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigParser.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: gansari <gansari@student.42berlin.de>      +#+  +:+       +#+        */
+/*   By: mibrokhimov <contact@ibrokhimov.de>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/12 15:59:32 by gansari           #+#    #+#             */
-/*   Updated: 2026/06/24 11:02:40 by gansari          ###   ########.fr       */
+/*   Updated: 2026/07/04 18:51:11 by mibrokhimov      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
